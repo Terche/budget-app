@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FormField } from "@/components/FormField";
+import { DatePickerField } from "@/components/DatePickerField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
@@ -132,12 +133,7 @@ export default function NewTransactionScreen() {
         placeholder="What is this for?"
       />
 
-      <FormField
-        label="Date (YYYY-MM-DD)"
-        value={date}
-        onChangeText={setDate}
-        placeholder="2024-01-01"
-      />
+      <DatePickerField label="Date" value={date} onChange={setDate} />
 
       <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
         Expense Group
