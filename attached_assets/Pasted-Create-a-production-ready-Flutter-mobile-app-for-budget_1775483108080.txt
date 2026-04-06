@@ -1,0 +1,167 @@
+Create a production-ready Flutter mobile app for budgeting, bi-weekly savings tracking, and business ROI analysis.
+
+APP PURPOSE:
+The app helps users:
+- Track income and expenses
+- Manage bi-weekly savings with specific dates
+- Group expenses into categories and groups
+- Evaluate whether a planned business will result in profit or loss (ROI)
+- Sync/export data via Google Drive using CSV (Google Sheets compatible)
+
+-------------------------------------
+TECH STACK:
+- Flutter (latest stable)
+- State management: Riverpod (preferred) or Provider
+- Local database: SQLite (using sqflite)
+- Charts: fl_chart (or similar)
+- Google Drive API integration for file upload/download
+- CSV handling using a Dart CSV package
+
+-------------------------------------
+CORE FEATURES:
+
+1. BI-WEEKLY SAVINGS SYSTEM
+- User sets:
+  - Start date
+  - Contribution amount
+- Automatically generate savings entries every 14 days
+- Show:
+  - Total accumulated savings
+  - Timeline or calendar view
+- Allow manual adjustments
+
+2. TRANSACTIONS (INCOME & EXPENSES)
+- Add / edit / delete transactions
+- Fields:
+  - amount
+  - date
+  - type (income/expense)
+  - category
+  - expense group
+  - notes
+
+3. GROUPED EXPENSE SYSTEM
+- Users can create "Expense Groups":
+  Examples: Business, Personal, Household
+- Inside each group:
+  - Multiple categories (e.g., rent, supplies, marketing)
+- Show:
+  - Total per category
+  - Total per group
+- Allow filtering by group
+
+4. BUSINESS ROI CALCULATOR
+- User defines a business plan:
+  - Initial capital (can be linked to savings)
+  - Expected costs (from grouped expenses)
+  - Expected revenue
+  - Time period (weeks/months)
+
+- Calculate:
+  - Total expenses
+  - Net profit or loss
+  - ROI percentage
+  - Break-even point (time to recover capital)
+
+- Clearly display:
+  - Profit / Loss / Break-even status
+- Allow multiple scenarios for comparison
+
+5. DASHBOARD
+- Total balance
+- Total savings (bi-weekly)
+- Income vs expenses summary
+- Quick ROI preview
+
+6. REPORTS & VISUALS
+- Pie chart (expense categories)
+- Bar chart (income vs expenses)
+- Line chart (savings growth over time)
+
+-------------------------------------
+DATA STORAGE STRATEGY:
+
+PRIMARY STORAGE:
+- SQLite database with structured tables
+
+TABLES SHOULD INCLUDE:
+- transactions
+- categories
+- expense_groups
+- savings_plans
+- savings_entries
+- business_plans
+
+-------------------------------------
+GOOGLE DRIVE + CSV SYNC:
+
+FEATURES:
+- Export data to CSV files:
+  - transactions.csv
+  - savings.csv
+  - business_plans.csv
+
+- Import CSV files back into the app
+- Upload/download files via Google Drive API
+
+REQUIREMENTS:
+- Proper CSV formatting (Google Sheets compatible)
+- Handle parsing safely
+- Manual sync buttons:
+  - "Export to Drive"
+  - "Import from Drive"
+
+-------------------------------------
+ARCHITECTURE (VERY IMPORTANT):
+
+Use clean architecture:
+
+lib/
+├── models/
+├── database/
+├── services/
+│   ├── roi_service.dart
+│   ├── csv_service.dart
+│   ├── gdrive_service.dart
+├── repositories/
+├── providers/ (Riverpod)
+├── screens/
+├── widgets/
+├── utils/
+└── main.dart
+
+RULES:
+- Keep business logic OUT of UI
+- ROI calculations must be in roi_service
+- Database access only through repositories
+- UI interacts through providers
+
+-------------------------------------
+UI/UX:
+
+- Mobile-first design
+- Clean, modern interface
+- Bottom navigation:
+  - Dashboard
+  - Transactions
+  - Savings
+  - ROI
+  - Reports
+- Optional dark mode
+- Responsive layout
+
+-------------------------------------
+OUTPUT REQUIREMENTS:
+
+- Full working Flutter project
+- Clean, modular code
+- Comments explaining key parts
+- Step-by-step instructions to run on Replit
+- Instructions for setting up Google Drive API
+
+-------------------------------------
+OPTIONAL (IF POSSIBLE):
+
+- Data validation
+- Error handling for CSV import
+- Simple onboarding screen

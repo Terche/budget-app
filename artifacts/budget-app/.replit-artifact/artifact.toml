@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Budget & ROI Tracker"
+version = "1.0.0"
+id = "artifacts/budget-app"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 24772
+
+[services.development]
+run = "pnpm --filter @workspace/budget-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/budget-app", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/budget-app", "run", "serve" ]
+
+[services.env]
+PORT = "24772"
+BASE_PATH = "/"
