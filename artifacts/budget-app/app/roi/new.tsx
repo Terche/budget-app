@@ -126,14 +126,14 @@ export default function NewROIPlanScreen() {
         placeholder="e.g. Coffee Shop Business"
       />
       <FormField
-        label="Initial Capital ($)"
+        label="Initial Capital (₱)"
         value={capital}
         onChangeText={setCapital}
         placeholder="0.00"
         keyboardType="decimal-pad"
       />
       <FormField
-        label="Expected Monthly Revenue ($)"
+        label="Expected Monthly Revenue (₱)"
         value={revenue}
         onChangeText={setRevenue}
         placeholder="0.00"
@@ -193,7 +193,7 @@ export default function NewROIPlanScreen() {
           placeholder="e.g. Rent"
         />
         <FormField
-          label="Amount ($)"
+          label="Amount (₱)"
           value={expAmount}
           onChangeText={setExpAmount}
           placeholder="0.00"

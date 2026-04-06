@@ -140,7 +140,7 @@ export default function TransactionDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <FormField label="Amount ($)" value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="decimal-pad" />
+      <FormField label="Amount (₱)" value={amount} onChangeText={setAmount} placeholder="0.00" keyboardType="decimal-pad" />
       <FormField label="Description" value={description} onChangeText={setDescription} placeholder="What is this for?" />
       <FormField label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} placeholder="2024-01-01" />
 

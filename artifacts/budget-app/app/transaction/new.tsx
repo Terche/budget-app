@@ -118,7 +118,7 @@ export default function NewTransactionScreen() {
       </View>
 
       <FormField
-        label="Amount ($)"
+        label="Amount (₱)"
         value={amount}
         onChangeText={setAmount}
         placeholder="0.00"

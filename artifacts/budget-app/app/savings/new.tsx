@@ -107,7 +107,7 @@ export default function NewSavingsPlanScreen() {
         placeholder="e.g. Emergency Fund"
       />
       <FormField
-        label="Contribution Amount ($)"
+        label="Contribution Amount (₱)"
         value={amount}
         onChangeText={setAmount}
         placeholder="0.00"
