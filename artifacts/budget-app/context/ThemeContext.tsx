@@ -43,6 +43,7 @@ export interface Theme {
   light: ColorPalette;
   dark: ColorPalette;
   radius: number;
+  gradient: [string, string];
 }
 
 export const THEMES: Theme[] = [
@@ -51,6 +52,7 @@ export const THEMES: Theme[] = [
     name: "Ocean Blue",
     emoji: "🔵",
     radius: 12,
+    gradient: ["#1e40af", "#3b82f6"],
     light: {
       text: "#0f172a", tint: "#1e40af",
       background: "#f8fafc", foreground: "#0f172a",
@@ -85,6 +87,7 @@ export const THEMES: Theme[] = [
     name: "Midnight",
     emoji: "🌑",
     radius: 12,
+    gradient: ["#18181b", "#3f3f46"],
     light: {
       text: "#18181b", tint: "#27272a",
       background: "#fafafa", foreground: "#18181b",
@@ -119,6 +122,7 @@ export const THEMES: Theme[] = [
     name: "Teal Forest",
     emoji: "🌿",
     radius: 14,
+    gradient: ["#0f766e", "#2dd4bf"],
     light: {
       text: "#042f2e", tint: "#0d9488",
       background: "#f0fdfa", foreground: "#042f2e",
@@ -153,6 +157,7 @@ export const THEMES: Theme[] = [
     name: "Sunset",
     emoji: "🌅",
     radius: 16,
+    gradient: ["#7c3aed", "#c084fc"],
     light: {
       text: "#3b0764", tint: "#a855f7",
       background: "#fdf4ff", foreground: "#3b0764",
@@ -187,6 +192,7 @@ export const THEMES: Theme[] = [
     name: "Rose Gold",
     emoji: "🌸",
     radius: 16,
+    gradient: ["#be123c", "#fb7185"],
     light: {
       text: "#4c0519", tint: "#e11d48",
       background: "#fff1f2", foreground: "#4c0519",
@@ -221,6 +227,7 @@ export const THEMES: Theme[] = [
     name: "Amber",
     emoji: "🟡",
     radius: 10,
+    gradient: ["#b45309", "#fbbf24"],
     light: {
       text: "#451a03", tint: "#d97706",
       background: "#fffbeb", foreground: "#451a03",
@@ -303,7 +310,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
   const palette = mode === "dark" ? currentTheme.dark : currentTheme.light;
-  const colors = { ...palette, radius: currentTheme.radius };
+  const colors = { ...palette, radius: currentTheme.radius, gradient: currentTheme.gradient };
 
   if (!loaded) return null;
 
