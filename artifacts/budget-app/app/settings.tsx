@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { useApp } from "@/context/AppContext";
+import { useTheme, THEMES } from "@/context/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 import {
   transactionsToCSV,
@@ -24,8 +25,10 @@ import {
 
 export default function SettingsScreen() {
   const colors = useColors();
+  const { themeId, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const { transactions, savingsEntries, businessPlans, categories, expenseGroups, addCategory, addExpenseGroup } = useApp();
+  const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
 
   const [newCatName, setNewCatName] = useState("");
   const [newGroupName, setNewGroupName] = useState("");
@@ -86,6 +89,29 @@ export default function SettingsScreen() {
         </Text>
         <View style={{ width: 42 }} />
       </View>
+
+      <TouchableOpacity
+        style={[
+          styles.section,
+          styles.appearanceRow,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+        onPress={() => router.push("/theme-picker")}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.exportIcon, { backgroundColor: colors.accent }]}>
+          <Feather name="sun" size={18} color={colors.primary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 2 }]}>
+            Appearance
+          </Text>
+          <Text style={[styles.aboutLabel, { color: colors.mutedForeground }]}>
+            {currentTheme.emoji} {currentTheme.name} · {mode === "dark" ? "Dark" : "Light"}
+          </Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </TouchableOpacity>
 
       <View
         style={[
@@ -336,6 +362,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 10,
   },
+  appearanceRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   aboutLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
   aboutValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
 });

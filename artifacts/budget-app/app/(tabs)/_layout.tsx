@@ -2,12 +2,12 @@ import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useTheme } from "@/context/ThemeContext";
 
 function NativeTabLayout() {
   return (
@@ -21,7 +21,7 @@ function NativeTabLayout() {
         <Label>Transactions</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="savings">
-        <Icon sf={{ default: "chart.line.uptrend.xyaxis", selected: "chart.line.uptrend.xyaxis.circle.fill" }} />
+        <Icon sf={{ default: "chart.line.uptrend.xyaxis", selected: "chart.line.uptrend.xyaxis" }} />
         <Label>Savings</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="roi">
@@ -38,8 +38,8 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  const { mode } = useTheme();
+  const isDark = mode === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -52,7 +52,7 @@ function ClassicTabLayout() {
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
+          borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
           elevation: 0,
           ...(isWeb ? { height: 84 } : {}),
@@ -70,10 +70,7 @@ function ClassicTabLayout() {
             />
           ) : isWeb ? (
             <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
+              style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}
             />
           ) : null,
       }}
@@ -82,60 +79,35 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Dashboard",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="house" tintColor={color} size={22} />
-            ) : (
-              <Feather name="home" size={20} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="home" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
           title: "Transactions",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="creditcard" tintColor={color} size={22} />
-            ) : (
-              <Feather name="credit-card" size={20} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="credit-card" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="savings"
         options={{
           title: "Savings",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="chart.line.uptrend.xyaxis" tintColor={color} size={22} />
-            ) : (
-              <Feather name="trending-up" size={20} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="trending-up" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="roi"
         options={{
           title: "ROI",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="briefcase" tintColor={color} size={22} />
-            ) : (
-              <Feather name="briefcase" size={20} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="briefcase" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: "Reports",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="chart.pie" tintColor={color} size={22} />
-            ) : (
-              <Feather name="pie-chart" size={20} color={color} />
-            ),
+          tabBarIcon: ({ color }) => <Feather name="pie-chart" size={20} color={color} />,
         }}
       />
     </Tabs>
