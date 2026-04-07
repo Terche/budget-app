@@ -32,6 +32,8 @@ function RootLayoutNav() {
       <Stack.Screen name="savings/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="roi/new" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="roi/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="subscription/new" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="subscription/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="theme-picker" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>

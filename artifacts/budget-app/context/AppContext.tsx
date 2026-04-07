@@ -70,6 +70,43 @@ export interface BusinessExpense {
   isRecurring: boolean;
 }
 
+export type AccountType = "savings" | "checking" | "e-wallet" | "credit";
+
+export interface BankAccount {
+  id: string;
+  name: string;
+  bankName: string;
+  accountType: AccountType;
+  balance: number;
+  color: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface AccountEntry {
+  id: string;
+  accountId: string;
+  type: "deposit" | "withdrawal";
+  amount: number;
+  date: string;
+  description: string;
+}
+
+export type BillingCycle = "monthly" | "quarterly" | "yearly";
+
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  billingDay: number;
+  billingCycle: BillingCycle;
+  categoryId: string;
+  color: string;
+  isActive: boolean;
+  notes: string;
+  startDate: string;
+}
+
 interface AppState {
   transactions: Transaction[];
   categories: Category[];
@@ -77,6 +114,9 @@ interface AppState {
   savingsPlans: SavingsPlan[];
   savingsEntries: SavingsEntry[];
   businessPlans: BusinessPlan[];
+  bankAccounts: BankAccount[];
+  accountEntries: AccountEntry[];
+  subscriptions: Subscription[];
 }
 
 interface AppContextType extends AppState {
@@ -97,6 +137,14 @@ interface AppContextType extends AppState {
   addBusinessPlan: (p: Omit<BusinessPlan, "id" | "createdAt">) => void;
   updateBusinessPlan: (p: BusinessPlan) => void;
   deleteBusinessPlan: (id: string) => void;
+  addBankAccount: (a: Omit<BankAccount, "id" | "createdAt">) => void;
+  updateBankAccount: (a: BankAccount) => void;
+  deleteBankAccount: (id: string) => void;
+  addAccountEntry: (e: Omit<AccountEntry, "id">) => void;
+  deleteAccountEntry: (id: string) => void;
+  addSubscription: (s: Omit<Subscription, "id">) => void;
+  updateSubscription: (s: Subscription) => void;
+  deleteSubscription: (id: string) => void;
 }
 
 const STORAGE_KEY = "budget_app_data_v2";
@@ -125,6 +173,9 @@ const defaultState: AppState = {
   savingsPlans: [],
   savingsEntries: [],
   businessPlans: [],
+  bankAccounts: [],
+  accountEntries: [],
+  subscriptions: [],
 };
 
 function genId(): string {
@@ -394,6 +445,117 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [update],
   );
 
+  const addBankAccount = useCallback(
+    (a: Omit<BankAccount, "id" | "createdAt">) => {
+      update((s) => ({
+        ...s,
+        bankAccounts: [
+          ...s.bankAccounts,
+          { ...a, id: genId(), createdAt: new Date().toISOString() },
+        ],
+      }));
+    },
+    [update],
+  );
+
+  const updateBankAccount = useCallback(
+    (a: BankAccount) => {
+      update((s) => ({
+        ...s,
+        bankAccounts: s.bankAccounts.map((x) => (x.id === a.id ? a : x)),
+      }));
+    },
+    [update],
+  );
+
+  const deleteBankAccount = useCallback(
+    (id: string) => {
+      update((s) => ({
+        ...s,
+        bankAccounts: s.bankAccounts.filter((x) => x.id !== id),
+        accountEntries: s.accountEntries.filter((x) => x.accountId !== id),
+      }));
+    },
+    [update],
+  );
+
+  const addAccountEntry = useCallback(
+    (e: Omit<AccountEntry, "id">) => {
+      const entry: AccountEntry = { ...e, id: genId() };
+      update((s) => {
+        const account = s.bankAccounts.find((a) => a.id === e.accountId);
+        if (!account) return s;
+        const newBalance =
+          e.type === "deposit"
+            ? account.balance + e.amount
+            : account.balance - e.amount;
+        return {
+          ...s,
+          accountEntries: [...s.accountEntries, entry],
+          bankAccounts: s.bankAccounts.map((a) =>
+            a.id === e.accountId ? { ...a, balance: newBalance } : a,
+          ),
+        };
+      });
+    },
+    [update],
+  );
+
+  const deleteAccountEntry = useCallback(
+    (id: string) => {
+      update((s) => {
+        const entry = s.accountEntries.find((e) => e.id === id);
+        if (!entry) return s;
+        const account = s.bankAccounts.find((a) => a.id === entry.accountId);
+        if (!account) return s;
+        const newBalance =
+          entry.type === "deposit"
+            ? account.balance - entry.amount
+            : account.balance + entry.amount;
+        return {
+          ...s,
+          accountEntries: s.accountEntries.filter((e) => e.id !== id),
+          bankAccounts: s.bankAccounts.map((a) =>
+            a.id === entry.accountId ? { ...a, balance: newBalance } : a,
+          ),
+        };
+      });
+    },
+    [update],
+  );
+
+  const addSubscription = useCallback(
+    (sub: Omit<Subscription, "id">) => {
+      update((s) => ({
+        ...s,
+        subscriptions: [...s.subscriptions, { ...sub, id: genId() }],
+      }));
+    },
+    [update],
+  );
+
+  const updateSubscription = useCallback(
+    (sub: Subscription) => {
+      update((s) => ({
+        ...s,
+        subscriptions: s.subscriptions.map((x) =>
+          x.id === sub.id ? sub : x,
+        ),
+      }));
+    },
+    [update],
+  );
+
+  const deleteSubscription = useCallback(
+    (id: string) => {
+      update((s) => ({
+        ...s,
+        subscriptions: s.subscriptions.filter((x) => x.id !== id),
+      }));
+    },
+    [update],
+  );
+
   if (!loaded) return null;
 
   return (
@@ -417,6 +579,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addBusinessPlan,
         updateBusinessPlan,
         deleteBusinessPlan,
+        addBankAccount,
+        updateBankAccount,
+        deleteBankAccount,
+        addAccountEntry,
+        deleteAccountEntry,
+        addSubscription,
+        updateSubscription,
+        deleteSubscription,
       }}
     >
       {children}

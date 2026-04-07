@@ -47,7 +47,7 @@ type DatePickTarget = "start" | "end";
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { transactions, savingsEntries, businessPlans } = useApp();
+  const { transactions, bankAccounts, subscriptions, businessPlans } = useApp();
 
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
   const [customStart, setCustomStart] = useState(() => daysAgo(30));
@@ -85,9 +85,17 @@ export default function DashboardScreen() {
       .filter((t) => t.type === "expense")
       .reduce((sum, t) => sum + t.amount, 0);
     const balance = income - expense;
-    const savings = savingsEntries.reduce((sum, e) => sum + e.amount, 0);
-    return { income, expense, balance, savings };
-  }, [filteredTransactions, savingsEntries]);
+    const accountsBalance = bankAccounts.reduce((sum, a) => sum + a.balance, 0);
+    const monthlyBills = subscriptions
+      .filter((s) => s.isActive)
+      .reduce((sum, s) => {
+        if (s.billingCycle === "monthly") return sum + s.amount;
+        if (s.billingCycle === "quarterly") return sum + s.amount / 3;
+        if (s.billingCycle === "yearly") return sum + s.amount / 12;
+        return sum;
+      }, 0);
+    return { income, expense, balance, accountsBalance, monthlyBills };
+  }, [filteredTransactions, bankAccounts, subscriptions]);
 
   const recentTransactions = useMemo(
     () =>
@@ -214,7 +222,8 @@ export default function DashboardScreen() {
       </LinearGradient>
 
       <View style={styles.statsRow}>
-        <StatCard label="Total Savings" value={formatCurrency(stats.savings)} icon="trending-up" color={colors.success} />
+        <StatCard label="Accounts Balance" value={formatCurrency(stats.accountsBalance)} icon="layers" color={colors.success} />
+        <StatCard label="Monthly Bills" value={formatCurrency(stats.monthlyBills)} icon="repeat" color={colors.destructive} />
         <StatCard label="Business Plans" value={businessPlans.length.toString()} icon="briefcase" color={colors.primary} />
       </View>
 

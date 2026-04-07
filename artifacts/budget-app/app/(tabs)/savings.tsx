@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import React, { useMemo } from "react";
 import {
   Alert,
-  FlatList,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,47 +12,58 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
-import { SectionHeader } from "@/components/SectionHeader";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { formatCurrency } from "@/services/roiService";
 
-export default function SavingsScreen() {
+const ACCOUNT_ICONS: Record<string, string> = {
+  BDO: "🏦",
+  BPI: "🏦",
+  UnionBank: "🏦",
+  Metrobank: "🏦",
+  "Security Bank": "🏦",
+  PNB: "🏦",
+  Landbank: "🏦",
+  GCash: "📱",
+  Maya: "📱",
+  Cash: "💵",
+  Other: "💳",
+};
+
+export default function AccountsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const {
-    savingsPlans,
-    savingsEntries,
-    deleteSavingsPlan,
-    generateSavingsEntries,
-  } = useApp();
+  const { bankAccounts, accountEntries, deleteBankAccount } = useApp();
 
-  const totalSavings = useMemo(
-    () => savingsEntries.reduce((sum, e) => sum + e.amount, 0),
-    [savingsEntries],
+  const totalBalance = useMemo(
+    () => bankAccounts.reduce((sum, a) => sum + a.balance, 0),
+    [bankAccounts],
   );
 
   const topPad =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
 
-  function planEntries(planId: string) {
-    return savingsEntries.filter((e) => e.planId === planId);
+  function handleDelete(id: string, name: string) {
+    Alert.alert(
+      "Delete Account",
+      `Delete "${name}" and all its transaction history?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => deleteBankAccount(id),
+        },
+      ],
+    );
   }
 
-  function planTotal(planId: string) {
-    return planEntries(planId).reduce((sum, e) => sum + e.amount, 0);
-  }
-
-  function handleDelete(planId: string) {
-    Alert.alert("Delete Plan", "Delete this savings plan and all its entries?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => deleteSavingsPlan(planId),
-      },
-    ]);
+  function accountRecentEntries(accountId: string) {
+    return [...accountEntries]
+      .filter((e) => e.accountId === accountId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 3);
   }
 
   return (
@@ -68,7 +78,7 @@ export default function SavingsScreen() {
     >
       <View style={styles.headerRow}>
         <Text style={[styles.heading, { color: colors.foreground }]}>
-          Savings
+          Accounts
         </Text>
         <TouchableOpacity
           style={[styles.addBtn, { backgroundColor: colors.primary }]}
@@ -81,197 +91,156 @@ export default function SavingsScreen() {
       <View
         style={[
           styles.totalCard,
-          { backgroundColor: colors.success + "18", borderColor: colors.success + "44" },
+          {
+            backgroundColor: colors.primary + "18",
+            borderColor: colors.primary + "44",
+          },
         ]}
       >
-        <Feather name="trending-up" size={24} color={colors.success} />
+        <View
+          style={[styles.totalIcon, { backgroundColor: colors.primary + "22" }]}
+        >
+          <Feather name="credit-card" size={22} color={colors.primary} />
+        </View>
         <View>
           <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>
-            Total Accumulated Savings
+            Total Balance
           </Text>
-          <Text style={[styles.totalValue, { color: colors.success }]}>
-            {formatCurrency(totalSavings)}
+          <Text style={[styles.totalValue, { color: colors.primary }]}>
+            {formatCurrency(totalBalance)}
+          </Text>
+        </View>
+        <View style={styles.totalRight}>
+          <Text style={[styles.accountCount, { color: colors.mutedForeground }]}>
+            {bankAccounts.length} account{bankAccounts.length !== 1 ? "s" : ""}
           </Text>
         </View>
       </View>
 
-      <SectionHeader title="Savings Plans" />
-
-      {savingsPlans.length === 0 ? (
+      {bankAccounts.length === 0 ? (
         <EmptyState
-          icon="trending-up"
-          title="No savings plans"
-          subtitle="Create a bi-weekly savings plan to get started"
+          icon="credit-card"
+          title="No bank accounts"
+          subtitle="Add your BDO, BPI, GCash, or any account to track your balance"
         />
       ) : (
-        savingsPlans.map((plan) => {
-          const entries = planEntries(plan.id);
-          const total = planTotal(plan.id);
-          const latestEntry = [...entries].sort(
-            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-          )[0];
+        bankAccounts.map((account) => {
+          const recent = accountRecentEntries(account.id);
+          const icon = ACCOUNT_ICONS[account.bankName] ?? "💳";
 
           return (
             <TouchableOpacity
-              key={plan.id}
+              key={account.id}
               style={[
-                styles.planCard,
+                styles.accountCard,
                 {
                   backgroundColor: colors.card,
-                  borderColor: colors.border,
+                  borderColor: account.color + "55",
+                  borderLeftColor: account.color,
                 },
               ]}
-              activeOpacity={0.9}
+              activeOpacity={0.88}
               onPress={() =>
                 router.push({
                   pathname: "/savings/[id]",
-                  params: { id: plan.id },
+                  params: { id: account.id },
                 })
               }
             >
-              <View style={styles.planHeader}>
-                <View style={styles.planTitleRow}>
+              <View style={styles.accountHeader}>
+                <View style={styles.accountLeft}>
                   <View
                     style={[
-                      styles.planIcon,
-                      { backgroundColor: colors.accent },
+                      styles.accountEmoji,
+                      { backgroundColor: account.color + "22" },
                     ]}
                   >
-                    <Feather name="clock" size={16} color={colors.primary} />
+                    <Text style={styles.emojiText}>{icon}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.planName, { color: colors.foreground }]}>
-                      {plan.name}
+                  <View>
+                    <Text
+                      style={[styles.accountName, { color: colors.foreground }]}
+                    >
+                      {account.name}
                     </Text>
                     <Text
-                      style={[styles.planMeta, { color: colors.mutedForeground }]}
+                      style={[
+                        styles.accountMeta,
+                        { color: colors.mutedForeground },
+                      ]}
                     >
-                      Every 14 days · {formatCurrency(plan.contributionAmount)}
-                      /cycle
+                      {account.bankName} ·{" "}
+                      {account.accountType.charAt(0).toUpperCase() +
+                        account.accountType.slice(1)}
                     </Text>
                   </View>
                 </View>
-                <View style={styles.planActions}>
-                  <TouchableOpacity
-                    onPress={() => generateSavingsEntries(plan.id)}
-                    style={[
-                      styles.actionBtn,
-                      { backgroundColor: colors.accent },
-                    ]}
+
+                <View style={styles.accountRight}>
+                  <Text
+                    style={[styles.accountBalance, { color: account.color }]}
                   >
-                    <Feather name="refresh-cw" size={14} color={colors.primary} />
-                  </TouchableOpacity>
+                    {formatCurrency(account.balance)}
+                  </Text>
                   <TouchableOpacity
-                    onPress={() => handleDelete(plan.id)}
-                    style={[
-                      styles.actionBtn,
-                      { backgroundColor: colors.destructive + "22" },
-                    ]}
+                    onPress={() => handleDelete(account.id, account.name)}
+                    style={styles.deleteBtn}
+                    hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                   >
-                    <Feather name="trash-2" size={14} color={colors.destructive} />
+                    <Feather
+                      name="trash-2"
+                      size={14}
+                      color={colors.destructive}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <View
-                style={[
-                  styles.planStats,
-                  { borderTopColor: colors.border },
-                ]}
-              >
-                <View style={styles.planStat}>
-                  <Text
-                    style={[styles.planStatValue, { color: colors.success }]}
-                  >
-                    {formatCurrency(total)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.planStatLabel,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Accumulated
-                  </Text>
-                </View>
-                <View style={styles.planStat}>
-                  <Text
-                    style={[styles.planStatValue, { color: colors.foreground }]}
-                  >
-                    {entries.length}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.planStatLabel,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Entries
-                  </Text>
-                </View>
-                <View style={styles.planStat}>
-                  <Text
-                    style={[styles.planStatValue, { color: colors.foreground }]}
-                  >
-                    {latestEntry
-                      ? new Date(latestEntry.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "—"}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.planStatLabel,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Last Entry
-                  </Text>
-                </View>
-              </View>
-
-              {entries.length > 0 && (
-                <View style={styles.timeline}>
-                  {[...entries]
-                    .sort(
-                      (a, b) =>
-                        new Date(b.date).getTime() -
-                        new Date(a.date).getTime(),
-                    )
-                    .slice(0, 4)
-                    .map((entry, idx) => (
-                      <View key={entry.id} style={styles.timelineItem}>
-                        <View
-                          style={[
-                            styles.timelineDot,
-                            {
-                              backgroundColor:
-                                idx === 0 ? colors.success : colors.border,
-                            },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.timelineDate,
-                            { color: colors.mutedForeground },
-                          ]}
-                        >
-                          {new Date(entry.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.timelineAmount,
-                            { color: colors.success },
-                          ]}
-                        >
-                          +{formatCurrency(entry.amount)}
-                        </Text>
-                      </View>
-                    ))}
+              {recent.length > 0 && (
+                <View
+                  style={[
+                    styles.recentEntries,
+                    { borderTopColor: colors.border },
+                  ]}
+                >
+                  {recent.map((entry) => (
+                    <View key={entry.id} style={styles.entryRow}>
+                      <Feather
+                        name={
+                          entry.type === "deposit" ? "arrow-down-left" : "arrow-up-right"
+                        }
+                        size={12}
+                        color={
+                          entry.type === "deposit"
+                            ? colors.success
+                            : colors.destructive
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.entryDesc,
+                          { color: colors.mutedForeground },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {entry.description || (entry.type === "deposit" ? "Deposit" : "Withdrawal")}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.entryAmt,
+                          {
+                            color:
+                              entry.type === "deposit"
+                                ? colors.success
+                                : colors.destructive,
+                          },
+                        ]}
+                      >
+                        {entry.type === "deposit" ? "+" : "-"}
+                        {formatCurrency(entry.amount)}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
               )}
             </TouchableOpacity>
@@ -304,11 +273,18 @@ const styles = StyleSheet.create({
   totalCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 14,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     marginBottom: 24,
+  },
+  totalIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   totalLabel: {
     fontSize: 12,
@@ -316,94 +292,83 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   totalValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontFamily: "Inter_700Bold",
   },
-  planCard: {
+  totalRight: {
+    marginLeft: "auto",
+  },
+  accountCount: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  accountCard: {
     borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 16,
+    borderLeftWidth: 4,
+    marginBottom: 14,
     overflow: "hidden",
   },
-  planHeader: {
+  accountHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    padding: 16,
+    alignItems: "center",
     justifyContent: "space-between",
+    padding: 16,
   },
-  planTitleRow: {
+  accountLeft: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
     flex: 1,
   },
-  planIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  accountEmoji: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  planName: {
+  emojiText: {
+    fontSize: 22,
+  },
+  accountName: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
   },
-  planMeta: {
+  accountMeta: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
+    textTransform: "capitalize",
   },
-  planActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  planStats: {
-    flexDirection: "row",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  planStat: {
-    flex: 1,
-    alignItems: "center",
-  },
-  planStatValue: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-  },
-  planStatLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-  },
-  timeline: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+  accountRight: {
+    alignItems: "flex-end",
     gap: 6,
   },
-  timelineItem: {
+  accountBalance: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  recentEntries: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  entryRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
-  timelineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  timelineDate: {
+  entryDesc: {
+    flex: 1,
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    flex: 1,
   },
-  timelineAmount: {
+  entryAmt: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },

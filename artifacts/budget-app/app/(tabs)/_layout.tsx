@@ -57,14 +57,14 @@ export default function TabLayout() {
         name="transactions"
         options={{
           title: "Transactions",
-          tabBarIcon: ({ color }) => <Feather name="credit-card" size={20} color={color} />,
+          tabBarIcon: ({ color }) => <Feather name="list" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="savings"
         options={{
-          title: "Savings",
-          tabBarIcon: ({ color }) => <Feather name="trending-up" size={20} color={color} />,
+          title: "Accounts",
+          tabBarIcon: ({ color }) => <Feather name="layers" size={20} color={color} />,
         }}
       />
       <Tabs.Screen

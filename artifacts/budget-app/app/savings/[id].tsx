@@ -1,255 +1,487 @@
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   FlatList,
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { EmptyState } from "@/components/EmptyState";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { formatCurrency } from "@/services/roiService";
 
-export default function SavingsPlanDetailScreen() {
+type EntryType = "deposit" | "withdrawal";
+
+export default function AccountDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { savingsPlans, savingsEntries, generateSavingsEntries, deleteSavingsEntry } = useApp();
+  const { bankAccounts, accountEntries, addAccountEntry, deleteAccountEntry } =
+    useApp();
 
-  const plan = savingsPlans.find((p) => p.id === id);
-  const entries = useMemo(
-    () =>
-      savingsEntries
-        .filter((e) => e.planId === id)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [savingsEntries, id],
-  );
+  const account = bankAccounts.find((a) => a.id === id);
+  const entries = [...accountEntries]
+    .filter((e) => e.accountId === id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const total = useMemo(
-    () => entries.reduce((s, e) => s + e.amount, 0),
-    [entries],
-  );
+  const [entryType, setEntryType] = useState<EntryType>("deposit");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [showForm, setShowForm] = useState(false);
 
-  const topPad =
-    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
 
-  if (!plan) {
+  if (!account) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text
-          style={[
-            styles.heading,
-            { color: colors.foreground, textAlign: "center", marginTop: 100 },
-          ]}
-        >
-          Plan not found
-        </Text>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <Text style={{ color: colors.mutedForeground }}>Account not found</Text>
       </View>
     );
   }
 
-  function handleGenerate() {
-    generateSavingsEntries(id!);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  function handleAddEntry() {
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid amount.");
+      return;
+    }
+    addAccountEntry({
+      accountId: id!,
+      type: entryType,
+      amount: parsedAmount,
+      date: new Date().toISOString().split("T")[0],
+      description: description.trim(),
+    });
+    setAmount("");
+    setDescription("");
+    setShowForm(false);
   }
 
   function handleDeleteEntry(entryId: string) {
-    Alert.alert("Delete Entry", "Remove this savings entry?", [
+    Alert.alert("Delete Entry", "Remove this transaction from this account?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => deleteSavingsEntry(entryId),
+        onPress: () => deleteAccountEntry(entryId),
       },
     ]);
   }
 
   return (
-    <FlatList
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{
-        paddingTop: topPad + 16,
-        paddingHorizontal: 20,
-        paddingBottom: botPad + 40,
-      }}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={
-        <>
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={[
-                styles.backBtn,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              <Feather name="arrow-left" size={20} color={colors.foreground} />
-            </TouchableOpacity>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[styles.heading, { color: colors.foreground }]}
-                numberOfLines={1}
-              >
-                {plan.name}
-              </Text>
-              <Text
-                style={[styles.subheading, { color: colors.mutedForeground }]}
-              >
-                {plan.frequency === "daily" ? "Daily"
-                  : plan.frequency === "weekly" ? "Weekly"
-                  : plan.frequency === "monthly" ? "Monthly"
-                  : plan.frequency === "custom" ? `Every ${plan.customDays ?? 14} days`
-                  : "Bi-weekly"} · {formatCurrency(plan.contributionAmount)}/cycle
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.generateBtn,
-                { backgroundColor: colors.accent },
-              ]}
-              onPress={handleGenerate}
-            >
-              <Feather name="refresh-cw" size={18} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-
-          <View
-            style={[
-              styles.totalCard,
-              { backgroundColor: colors.success + "18", borderColor: colors.success + "44" },
-            ]}
-          >
-            <Text
-              style={[styles.totalLabel, { color: colors.mutedForeground }]}
-            >
-              Total Accumulated
-            </Text>
-            <Text style={[styles.totalValue, { color: colors.success }]}>
-              {formatCurrency(total)}
-            </Text>
-            <Text style={[styles.totalMeta, { color: colors.mutedForeground }]}>
-              {entries.length} entries · Started{" "}
-              {new Date(plan.startDate).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </Text>
-          </View>
-
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Entries
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: topPad + 8,
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
+        <TouchableOpacity onPress={() => router.back()}>
+          <Feather name="arrow-left" size={24} color={colors.foreground} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.accountName, { color: colors.foreground }]}>
+            {account.name}
           </Text>
-        </>
-      }
-      data={entries}
-      keyExtractor={(item) => item.id}
-      ListEmptyComponent={
-        <EmptyState
-          icon="clock"
-          title="No entries yet"
-          subtitle="Tap the refresh button to generate bi-weekly entries from your start date"
-        />
-      }
-      renderItem={({ item }) => (
+          <Text
+            style={[styles.accountMeta, { color: colors.mutedForeground }]}
+          >
+            {account.bankName} · {account.accountType}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.addEntryBtn, { backgroundColor: colors.primary }]}
+          onPress={() => setShowForm((v) => !v)}
+        >
+          <Feather
+            name={showForm ? "x" : "plus"}
+            size={20}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View
+        style={[
+          styles.balanceCard,
+          {
+            backgroundColor: account.color + "18",
+            borderColor: account.color + "44",
+          },
+        ]}
+      >
+        <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>
+          Current Balance
+        </Text>
+        <Text style={[styles.balanceValue, { color: account.color }]}>
+          {formatCurrency(account.balance)}
+        </Text>
+      </View>
+
+      {showForm && (
         <View
           style={[
-            styles.entryItem,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            styles.form,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              marginHorizontal: 20,
+            },
           ]}
         >
-          <View
-            style={[
-              styles.entryDot,
-              { backgroundColor: item.isManual ? colors.warning : colors.success },
-            ]}
-          />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.entryDate, { color: colors.foreground }]}>
-              {new Date(item.date).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </Text>
-            {item.notes ? (
-              <Text
-                style={[styles.entryNotes, { color: colors.mutedForeground }]}
+          <View style={styles.typeToggle}>
+            {(["deposit", "withdrawal"] as EntryType[]).map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[
+                  styles.toggleBtn,
+                  {
+                    backgroundColor:
+                      entryType === t
+                        ? t === "deposit"
+                          ? colors.success + "22"
+                          : colors.destructive + "22"
+                        : "transparent",
+                    borderColor:
+                      entryType === t
+                        ? t === "deposit"
+                          ? colors.success
+                          : colors.destructive
+                        : colors.border,
+                  },
+                ]}
+                onPress={() => setEntryType(t)}
               >
-                {item.notes}
-              </Text>
-            ) : null}
+                <Feather
+                  name={t === "deposit" ? "arrow-down-left" : "arrow-up-right"}
+                  size={14}
+                  color={
+                    entryType === t
+                      ? t === "deposit"
+                        ? colors.success
+                        : colors.destructive
+                      : colors.mutedForeground
+                  }
+                />
+                <Text
+                  style={[
+                    styles.toggleText,
+                    {
+                      color:
+                        entryType === t
+                          ? t === "deposit"
+                            ? colors.success
+                            : colors.destructive
+                          : colors.mutedForeground,
+                    },
+                  ]}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-          <Text style={[styles.entryAmount, { color: colors.success }]}>
-            +{formatCurrency(item.amount)}
-          </Text>
+
+          <TextInput
+            style={[
+              styles.formInput,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                color: colors.foreground,
+              },
+            ]}
+            placeholder="Amount (₱)"
+            placeholderTextColor={colors.mutedForeground}
+            keyboardType="decimal-pad"
+            value={amount}
+            onChangeText={setAmount}
+          />
+
+          <TextInput
+            style={[
+              styles.formInput,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                color: colors.foreground,
+              },
+            ]}
+            placeholder="Description (optional)"
+            placeholderTextColor={colors.mutedForeground}
+            value={description}
+            onChangeText={setDescription}
+          />
+
           <TouchableOpacity
-            onPress={() => handleDeleteEntry(item.id)}
-            style={{ padding: 4 }}
+            style={[
+              styles.confirmBtn,
+              {
+                backgroundColor:
+                  entryType === "deposit"
+                    ? colors.success
+                    : colors.destructive,
+              },
+            ]}
+            onPress={handleAddEntry}
           >
-            <Feather name="trash-2" size={14} color={colors.destructive} />
+            <Text style={styles.confirmBtnText}>
+              {entryType === "deposit" ? "Add Deposit" : "Add Withdrawal"}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
-    />
+
+      <FlatList
+        data={entries}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: botPad + 100,
+        }}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Feather name="list" size={36} color={colors.mutedForeground} />
+            <Text
+              style={[styles.emptyText, { color: colors.mutedForeground }]}
+            >
+              No transactions yet
+            </Text>
+            <Text
+              style={[styles.emptySubText, { color: colors.mutedForeground }]}
+            >
+              Tap + to record a deposit or withdrawal
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View
+            style={[
+              styles.entryRow,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.entryIcon,
+                {
+                  backgroundColor:
+                    item.type === "deposit"
+                      ? colors.success + "22"
+                      : colors.destructive + "22",
+                },
+              ]}
+            >
+              <Feather
+                name={
+                  item.type === "deposit" ? "arrow-down-left" : "arrow-up-right"
+                }
+                size={16}
+                color={
+                  item.type === "deposit" ? colors.success : colors.destructive
+                }
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.entryDesc, { color: colors.foreground }]}>
+                {item.description ||
+                  (item.type === "deposit" ? "Deposit" : "Withdrawal")}
+              </Text>
+              <Text
+                style={[styles.entryDate, { color: colors.mutedForeground }]}
+              >
+                {new Date(item.date).toLocaleDateString("en-PH", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </Text>
+            </View>
+            <Text
+              style={[
+                styles.entryAmount,
+                {
+                  color:
+                    item.type === "deposit"
+                      ? colors.success
+                      : colors.destructive,
+                },
+              ]}
+            >
+              {item.type === "deposit" ? "+" : "-"}
+              {formatCurrency(item.amount)}
+            </Text>
+            <TouchableOpacity
+              onPress={() => handleDeleteEntry(item.id)}
+              style={styles.deleteEntryBtn}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
+              <Feather name="x" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  headerRow: {
+  header: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 20,
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 14,
   },
-  backBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+  headerCenter: { flex: 1 },
+  accountName: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+  },
+  accountMeta: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+    textTransform: "capitalize",
+  },
+  addEntryBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
   },
-  heading: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  subheading: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  generateBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  totalCard: {
+  balanceCard: {
+    margin: 20,
+    marginBottom: 8,
     borderRadius: 16,
-    padding: 20,
     borderWidth: 1,
-    marginBottom: 24,
-    gap: 6,
+    padding: 20,
+    alignItems: "center",
   },
-  totalLabel: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  totalValue: { fontSize: 32, fontFamily: "Inter_700Bold" },
-  totalMeta: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 12 },
-  entryItem: {
+  balanceLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 6,
+  },
+  balanceValue: {
+    fontSize: 34,
+    fontFamily: "Inter_700Bold",
+  },
+  form: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 8,
+    gap: 10,
+  },
+  typeToggle: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  toggleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  toggleText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  formInput: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+  confirmBtn: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  confirmBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  entryRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 8,
   },
-  entryDot: { width: 10, height: 10, borderRadius: 5 },
-  entryDate: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  entryNotes: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  entryAmount: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  entryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  entryDesc: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  entryDate: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  entryAmount: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  deleteEntryBtn: {
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingTop: 60,
+    gap: 10,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  emptySubText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
 });

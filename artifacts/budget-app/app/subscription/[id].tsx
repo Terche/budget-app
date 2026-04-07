@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -12,56 +12,95 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp, AccountType } from "@/context/AppContext";
+import { useApp, BillingCycle } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-
-const BANKS = [
-  "BDO", "BPI", "UnionBank", "Metrobank", "Security Bank",
-  "PNB", "Landbank", "GCash", "Maya", "Cash", "Other",
-];
-
-const ACCOUNT_TYPES: { value: AccountType; label: string; icon: string }[] = [
-  { value: "savings", label: "Savings", icon: "dollar-sign" },
-  { value: "checking", label: "Checking", icon: "file-text" },
-  { value: "e-wallet", label: "E-Wallet", icon: "smartphone" },
-  { value: "credit", label: "Credit", icon: "credit-card" },
-];
+import { formatCurrency } from "@/services/roiService";
 
 const COLORS = [
   "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b",
   "#ef4444", "#ec4899", "#06b6d4", "#84cc16",
 ];
 
-export default function NewAccountScreen() {
+const CYCLES: { value: BillingCycle; label: string }[] = [
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+  { value: "yearly", label: "Yearly" },
+];
+
+export default function EditSubscriptionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addBankAccount } = useApp();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { subscriptions, updateSubscription, deleteSubscription } = useApp();
 
-  const [name, setName] = useState("");
-  const [bankName, setBankName] = useState("BDO");
-  const [accountType, setAccountType] = useState<AccountType>("savings");
-  const [balance, setBalance] = useState("0");
-  const [color, setColor] = useState(COLORS[0]);
-  const [notes, setNotes] = useState("");
+  const sub = subscriptions.find((s) => s.id === id);
+
+  const [name, setName] = useState(sub?.name ?? "");
+  const [amount, setAmount] = useState(sub ? String(sub.amount) : "");
+  const [billingDay, setBillingDay] = useState(sub ? String(sub.billingDay) : "1");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>(
+    sub?.billingCycle ?? "monthly",
+  );
+  const [color, setColor] = useState(sub?.color ?? COLORS[0]);
+  const [notes, setNotes] = useState(sub?.notes ?? "");
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
 
+  if (!sub) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <Text style={{ color: colors.mutedForeground }}>
+          Subscription not found
+        </Text>
+      </View>
+    );
+  }
+
   function handleSave() {
     if (!name.trim()) {
-      Alert.alert("Missing Info", "Please enter an account name.");
+      Alert.alert("Missing Info", "Please enter a name.");
       return;
     }
-    const parsedBalance = parseFloat(balance) || 0;
-    addBankAccount({
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid amount.");
+      return;
+    }
+    const day = parseInt(billingDay) || 1;
+    updateSubscription({
+      ...sub!,
       name: name.trim(),
-      bankName,
-      accountType,
-      balance: parsedBalance,
+      amount: parsedAmount,
+      billingDay: Math.min(Math.max(day, 1), 28),
+      billingCycle,
       color,
       notes: notes.trim(),
     });
     router.back();
+  }
+
+  function handleDelete() {
+    Alert.alert("Delete Subscription", `Remove "${sub!.name}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          deleteSubscription(id!);
+          router.back();
+        },
+      },
+    ]);
   }
 
   return (
@@ -79,13 +118,58 @@ export default function NewAccountScreen() {
           <Feather name="arrow-left" size={24} color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.heading, { color: colors.foreground }]}>
-          New Account
+          Edit Subscription
         </Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={handleDelete}>
+          <Feather name="trash-2" size={20} color={colors.destructive} />
+        </TouchableOpacity>
+      </View>
+
+      <View
+        style={[
+          styles.previewCard,
+          {
+            backgroundColor: color + "18",
+            borderColor: color + "44",
+          },
+        ]}
+      >
+        <Text style={[styles.previewName, { color: colors.foreground }]}>
+          {name || "Subscription name"}
+        </Text>
+        <Text style={[styles.previewAmount, { color }]}>
+          {formatCurrency(parseFloat(amount) || 0)}/
+          {billingCycle === "monthly"
+            ? "mo"
+            : billingCycle === "quarterly"
+              ? "qtr"
+              : "yr"}
+        </Text>
+        <View
+          style={[
+            styles.activeBadge,
+            {
+              backgroundColor: sub.isActive
+                ? colors.success + "22"
+                : colors.border,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.activeBadgeText,
+              {
+                color: sub.isActive ? colors.success : colors.mutedForeground,
+              },
+            ]}
+          >
+            {sub.isActive ? "Active" : "Paused"}
+          </Text>
+        </View>
       </View>
 
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
-        Account Name
+        Name
       </Text>
       <TextInput
         style={[
@@ -96,90 +180,14 @@ export default function NewAccountScreen() {
             color: colors.foreground,
           },
         ]}
-        placeholder="e.g. My BDO Savings"
+        placeholder="Subscription name"
         placeholderTextColor={colors.mutedForeground}
         value={name}
         onChangeText={setName}
       />
 
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>Bank</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: 20 }}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {BANKS.map((b) => (
-          <TouchableOpacity
-            key={b}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: bankName === b ? colors.primary : colors.card,
-                borderColor: bankName === b ? colors.primary : colors.border,
-              },
-            ]}
-            onPress={() => setBankName(b)}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                {
-                  color:
-                    bankName === b
-                      ? colors.primaryForeground
-                      : colors.mutedForeground,
-                },
-              ]}
-            >
-              {b}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
-        Account Type
-      </Text>
-      <View style={styles.typeRow}>
-        {ACCOUNT_TYPES.map((t) => (
-          <TouchableOpacity
-            key={t.value}
-            style={[
-              styles.typeCard,
-              {
-                backgroundColor:
-                  accountType === t.value ? colors.primary + "18" : colors.card,
-                borderColor:
-                  accountType === t.value ? colors.primary : colors.border,
-              },
-            ]}
-            onPress={() => setAccountType(t.value)}
-          >
-            <Feather
-              name={t.icon as any}
-              size={18}
-              color={
-                accountType === t.value ? colors.primary : colors.mutedForeground
-              }
-            />
-            <Text
-              style={[
-                styles.typeLabel,
-                {
-                  color:
-                    accountType === t.value ? colors.primary : colors.foreground,
-                },
-              ]}
-            >
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>
-        Current Balance (₱)
+        Amount (₱)
       </Text>
       <TextInput
         style={[
@@ -193,8 +201,62 @@ export default function NewAccountScreen() {
         placeholder="0.00"
         placeholderTextColor={colors.mutedForeground}
         keyboardType="decimal-pad"
-        value={balance}
-        onChangeText={setBalance}
+        value={amount}
+        onChangeText={setAmount}
+      />
+
+      <Text style={[styles.label, { color: colors.mutedForeground }]}>
+        Billing Cycle
+      </Text>
+      <View style={styles.cycleRow}>
+        {CYCLES.map((c) => (
+          <TouchableOpacity
+            key={c.value}
+            style={[
+              styles.cycleChip,
+              {
+                backgroundColor:
+                  billingCycle === c.value ? colors.primary : colors.card,
+                borderColor:
+                  billingCycle === c.value ? colors.primary : colors.border,
+              },
+            ]}
+            onPress={() => setBillingCycle(c.value)}
+          >
+            <Text
+              style={[
+                styles.cycleChipText,
+                {
+                  color:
+                    billingCycle === c.value
+                      ? colors.primaryForeground
+                      : colors.mutedForeground,
+                },
+              ]}
+            >
+              {c.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={[styles.label, { color: colors.mutedForeground }]}>
+        Billing Day (1–28)
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            color: colors.foreground,
+          },
+        ]}
+        placeholder="1"
+        placeholderTextColor={colors.mutedForeground}
+        keyboardType="number-pad"
+        value={billingDay}
+        onChangeText={setBillingDay}
       />
 
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
@@ -229,7 +291,7 @@ export default function NewAccountScreen() {
             color: colors.foreground,
           },
         ]}
-        placeholder="Any notes about this account..."
+        placeholder="Any notes..."
         placeholderTextColor={colors.mutedForeground}
         multiline
         value={notes}
@@ -241,7 +303,7 @@ export default function NewAccountScreen() {
         onPress={handleSave}
       >
         <Feather name="save" size={18} color="#fff" />
-        <Text style={styles.saveBtnText}>Add Account</Text>
+        <Text style={styles.saveBtnText}>Save Changes</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -253,11 +315,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 28,
+    marginBottom: 20,
   },
   heading: {
     fontSize: 20,
     fontFamily: "Inter_700Bold",
+  },
+  previewCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 24,
+    gap: 6,
+    alignItems: "flex-start",
+  },
+  previewName: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+  },
+  previewAmount: {
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+  },
+  activeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  activeBadgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   label: {
     fontSize: 12,
@@ -280,32 +368,19 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     paddingTop: 12,
   },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  typeRow: {
+  cycleRow: {
     flexDirection: "row",
     gap: 8,
     marginBottom: 20,
-    flexWrap: "wrap",
   },
-  typeCard: {
+  cycleChip: {
     flex: 1,
-    minWidth: "45%",
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 6,
   },
-  typeLabel: {
+  cycleChipText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
   },
