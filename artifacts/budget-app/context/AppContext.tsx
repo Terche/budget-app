@@ -31,12 +31,16 @@ export interface Transaction {
   description: string;
 }
 
+export type SavingsFrequency = "daily" | "weekly" | "biweekly" | "monthly" | "custom";
+
 export interface SavingsPlan {
   id: string;
   name: string;
   startDate: string;
   contributionAmount: number;
   isActive: boolean;
+  frequency: SavingsFrequency;
+  customDays?: number;
 }
 
 export interface SavingsEntry {
@@ -319,6 +323,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const start = new Date(plan.startDate);
         const newEntries: SavingsEntry[] = [];
 
+        const freq = plan.frequency ?? "biweekly";
+        const customDays = plan.customDays ?? 14;
+
+        function nextDate(d: Date): Date {
+          const n = new Date(d);
+          if (freq === "daily") n.setDate(n.getDate() + 1);
+          else if (freq === "weekly") n.setDate(n.getDate() + 7);
+          else if (freq === "biweekly") n.setDate(n.getDate() + 14);
+          else if (freq === "monthly") n.setMonth(n.getMonth() + 1);
+          else n.setDate(n.getDate() + customDays);
+          return n;
+        }
+
         let current = new Date(start);
         while (current <= today) {
           const dateStr = current.toISOString().split("T")[0];
@@ -332,7 +349,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               notes: "Auto-generated",
             });
           }
-          current = new Date(current.getTime() + 14 * 24 * 60 * 60 * 1000);
+          current = nextDate(current);
         }
 
         return {

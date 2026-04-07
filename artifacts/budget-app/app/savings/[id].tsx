@@ -103,7 +103,11 @@ export default function SavingsPlanDetailScreen() {
               <Text
                 style={[styles.subheading, { color: colors.mutedForeground }]}
               >
-                Every 14 days · {formatCurrency(plan.contributionAmount)}/cycle
+                {plan.frequency === "daily" ? "Daily"
+                  : plan.frequency === "weekly" ? "Weekly"
+                  : plan.frequency === "monthly" ? "Monthly"
+                  : plan.frequency === "custom" ? `Every ${plan.customDays ?? 14} days`
+                  : "Bi-weekly"} · {formatCurrency(plan.contributionAmount)}/cycle
               </Text>
             </View>
             <TouchableOpacity
