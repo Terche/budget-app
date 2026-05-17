@@ -7,9 +7,11 @@ import {
 } from "@expo-google-fonts/inter";
 import { Feather } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Updates from "expo-updates";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -19,6 +21,28 @@ import { AppProvider } from "@/context/AppContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
+
+async function checkForAppUpdate() {
+  if (!Updates.isEnabled) return;
+  try {
+    const result = await Updates.checkForUpdateAsync();
+    if (!result.isAvailable) return;
+    await Updates.fetchUpdateAsync();
+    Alert.alert(
+      "Update Ready",
+      "A new version of Peso Tracker has been downloaded. Restart now to apply it.",
+      [
+        { text: "Later", style: "cancel" },
+        {
+          text: "Restart Now",
+          onPress: () => Updates.reloadAsync(),
+        },
+      ]
+    );
+  } catch {
+    // silently ignore — network offline or Expo Go environment
+  }
+}
 
 const queryClient = new QueryClient();
 
@@ -52,6 +76,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      checkForAppUpdate();
     }
   }, [fontsLoaded, fontError]);
 
