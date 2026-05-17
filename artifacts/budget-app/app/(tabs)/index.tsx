@@ -221,11 +221,16 @@ export default function DashboardScreen() {
         </View>
       </LinearGradient>
 
-      <View style={styles.statsRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.statsScroll}
+        contentContainerStyle={styles.statsRow}
+      >
         <StatCard label="Accounts Balance" value={formatCurrency(stats.accountsBalance)} icon="layers" color={colors.success} />
         <StatCard label="Monthly Bills" value={formatCurrency(stats.monthlyBills)} icon="repeat" color={colors.destructive} />
         <StatCard label="Business Plans" value={businessPlans.length.toString()} icon="briefcase" color={colors.primary} />
-      </View>
+      </ScrollView>
 
       {topROI ? (
         <>
@@ -421,7 +426,8 @@ const styles = StyleSheet.create({
   balanceDivider: { width: 1, height: 44, marginHorizontal: 16 },
   balanceStatLabel: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular" },
   balanceStatValue: { color: "#ffffff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  statsRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
+  statsScroll: { marginBottom: 24 },
+  statsRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingRight: 20 },
   roiCard: { padding: 14, borderWidth: 1, marginBottom: 24 },
   roiCardRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   roiIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },

@@ -1,6 +1,7 @@
 import React from "react";
 import {
   KeyboardTypeOptions,
+  ReturnKeyTypeOptions,
   StyleSheet,
   Text,
   TextInput,
@@ -14,47 +15,66 @@ interface FormFieldProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   keyboardType?: KeyboardTypeOptions;
+  returnKeyType?: ReturnKeyTypeOptions;
+  onSubmitEditing?: () => void;
   multiline?: boolean;
   numberOfLines?: number;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoFocus?: boolean;
 }
 
-export function FormField({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  multiline,
-  numberOfLines,
-}: FormFieldProps) {
-  const colors = useColors();
+export const FormField = React.forwardRef<TextInput, FormFieldProps>(
+  function FormField(
+    {
+      label,
+      value,
+      onChangeText,
+      placeholder,
+      keyboardType,
+      returnKeyType,
+      onSubmitEditing,
+      multiline,
+      numberOfLines,
+      autoCapitalize = "sentences",
+      autoFocus,
+    },
+    ref,
+  ) {
+    const colors = useColors();
 
-  return (
-    <View style={styles.container}>
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.muted,
-            color: colors.foreground,
-            borderColor: colors.border,
-          },
-          multiline ? styles.multiline : null,
-        ]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.mutedForeground}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        numberOfLines={numberOfLines}
-      />
-    </View>
-  );
-}
+    return (
+      <View style={styles.container}>
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>
+          {label}
+        </Text>
+        <TextInput
+          ref={ref}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.muted,
+              color: colors.foreground,
+              borderColor: colors.border,
+            },
+            multiline ? styles.multiline : null,
+          ]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.mutedForeground}
+          keyboardType={keyboardType}
+          returnKeyType={returnKeyType ?? (multiline ? "default" : "next")}
+          onSubmitEditing={onSubmitEditing}
+          blurOnSubmit={multiline ?? false}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          autoCapitalize={autoCapitalize}
+          autoFocus={autoFocus}
+        />
+      </View>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   container: {

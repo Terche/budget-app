@@ -1,13 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -30,6 +31,9 @@ export default function NewTransactionScreen() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [groupId, setGroupId] = useState(expenseGroups[0]?.id ?? "");
+
+  const descRef = useRef<TextInput>(null);
+  const notesRef = useRef<TextInput>(null);
 
   const topPad =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -79,40 +83,18 @@ export default function NewTransactionScreen() {
 
       <View style={[styles.typeSwitch, { backgroundColor: colors.muted }]}>
         <TouchableOpacity
-          style={[
-            styles.typeBtn,
-            type === "expense" && { backgroundColor: colors.expense },
-          ]}
+          style={[styles.typeBtn, type === "expense" && { backgroundColor: colors.expense }]}
           onPress={() => setType("expense")}
         >
-          <Text
-            style={[
-              styles.typeBtnText,
-              {
-                color:
-                  type === "expense" ? "#fff" : colors.mutedForeground,
-              },
-            ]}
-          >
+          <Text style={[styles.typeBtnText, { color: type === "expense" ? "#fff" : colors.mutedForeground }]}>
             Expense
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.typeBtn,
-            type === "income" && { backgroundColor: colors.income },
-          ]}
+          style={[styles.typeBtn, type === "income" && { backgroundColor: colors.income }]}
           onPress={() => setType("income")}
         >
-          <Text
-            style={[
-              styles.typeBtnText,
-              {
-                color:
-                  type === "income" ? "#fff" : colors.mutedForeground,
-              },
-            ]}
-          >
+          <Text style={[styles.typeBtnText, { color: type === "income" ? "#fff" : colors.mutedForeground }]}>
             Income
           </Text>
         </TouchableOpacity>
@@ -124,13 +106,19 @@ export default function NewTransactionScreen() {
         onChangeText={setAmount}
         placeholder="0.00"
         keyboardType="decimal-pad"
+        returnKeyType="next"
+        onSubmitEditing={() => descRef.current?.focus()}
+        autoCapitalize="none"
       />
 
       <FormField
+        ref={descRef}
         label="Description"
         value={description}
         onChangeText={setDescription}
         placeholder="What is this for?"
+        returnKeyType="next"
+        onSubmitEditing={() => notesRef.current?.focus()}
       />
 
       <DatePickerField label="Date" value={date} onChange={setDate} />
@@ -145,8 +133,7 @@ export default function NewTransactionScreen() {
             style={[
               styles.chip,
               {
-                backgroundColor:
-                  groupId === g.id ? g.color + "22" : colors.muted,
+                backgroundColor: groupId === g.id ? g.color + "22" : colors.muted,
                 borderColor: groupId === g.id ? g.color : colors.border,
                 borderWidth: 1,
               },
@@ -182,8 +169,7 @@ export default function NewTransactionScreen() {
               style={[
                 styles.chip,
                 {
-                  backgroundColor:
-                    categoryId === c.id ? c.color + "22" : colors.muted,
+                  backgroundColor: categoryId === c.id ? c.color + "22" : colors.muted,
                   borderColor: categoryId === c.id ? c.color : colors.border,
                   borderWidth: 1,
                 },
@@ -204,12 +190,14 @@ export default function NewTransactionScreen() {
       </View>
 
       <FormField
+        ref={notesRef}
         label="Notes"
         value={notes}
         onChangeText={setNotes}
         placeholder="Optional notes..."
         multiline
         numberOfLines={3}
+        returnKeyType="done"
       />
 
       <PrimaryButton label="Save Transaction" onPress={handleSave} />
@@ -233,10 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
-  title: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-  },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeSwitch: {
     flexDirection: "row",
     borderRadius: 14,
@@ -249,10 +234,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  typeBtnText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+  typeBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   sectionLabel: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
