@@ -117,9 +117,11 @@ interface AppState {
   bankAccounts: BankAccount[];
   accountEntries: AccountEntry[];
   subscriptions: Subscription[];
+  userName: string;
 }
 
 interface AppContextType extends AppState {
+  setUserName: (name: string) => void;
   addTransaction: (t: Omit<Transaction, "id">) => void;
   updateTransaction: (t: Transaction) => void;
   deleteTransaction: (id: string) => void;
@@ -176,6 +178,7 @@ const defaultState: AppState = {
   bankAccounts: [],
   accountEntries: [],
   subscriptions: [],
+  userName: "",
 };
 
 function genId(): string {
@@ -556,12 +559,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [update],
   );
 
+  const setUserName = useCallback(
+    (name: string) => {
+      update((s) => ({ ...s, userName: name }));
+    },
+    [update],
+  );
+
   if (!loaded) return null;
 
   return (
     <AppContext.Provider
       value={{
         ...state,
+        setUserName,
         addTransaction,
         updateTransaction,
         deleteTransaction,

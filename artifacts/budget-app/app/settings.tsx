@@ -39,12 +39,16 @@ export default function SettingsScreen() {
     businessPlans,
     categories,
     expenseGroups,
+    userName,
+    setUserName,
     addCategory,
     deleteCategory,
     addExpenseGroup,
     deleteExpenseGroup,
   } = useApp();
   const currentTheme = THEMES.find((t) => t.id === themeId) ?? THEMES[0];
+
+  const [nameInput, setNameInput] = useState(userName);
 
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState(PALETTE[0]);
@@ -164,6 +168,62 @@ export default function SettingsScreen() {
         </TouchableOpacity>
         <Text style={[styles.heading, { color: colors.foreground }]}>Settings</Text>
         <View style={{ width: 42 }} />
+      </View>
+
+      {/* ── Profile Name ── */}
+      <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Dashboard Title</Text>
+            <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+              Shown at the top of your dashboard
+            </Text>
+          </View>
+        </View>
+        <View style={styles.nameRow}>
+          <TextInput
+            style={[
+              styles.nameInput,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                color: colors.foreground,
+              },
+            ]}
+            placeholder="Your Finances"
+            placeholderTextColor={colors.mutedForeground}
+            value={nameInput}
+            onChangeText={setNameInput}
+            returnKeyType="done"
+            onSubmitEditing={() => setUserName(nameInput.trim())}
+            maxLength={32}
+          />
+          <TouchableOpacity
+            style={[
+              styles.nameSaveBtn,
+              {
+                backgroundColor:
+                  nameInput.trim() !== userName ? colors.primary : colors.muted,
+              },
+            ]}
+            onPress={() => {
+              setUserName(nameInput.trim());
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }}
+            disabled={nameInput.trim() === userName}
+          >
+            <Feather
+              name="check"
+              size={16}
+              color={nameInput.trim() !== userName ? "#fff" : colors.mutedForeground}
+            />
+          </TouchableOpacity>
+        </View>
+        {nameInput.trim() && (
+          <Text style={[styles.namePreview, { color: colors.mutedForeground }]}>
+            Preview: <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{nameInput.trim()}</Text>
+          </Text>
+        )}
       </View>
 
       <TouchableOpacity
@@ -530,4 +590,32 @@ const styles = StyleSheet.create({
   },
   metaText: { fontSize: 13, fontFamily: "Inter_400Regular" },
   aboutValue: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  nameInput: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+  },
+  nameSaveBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  namePreview: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 4,
+  },
 });

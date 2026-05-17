@@ -47,7 +47,7 @@ type DatePickTarget = "start" | "end";
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { transactions, bankAccounts, subscriptions, businessPlans } = useApp();
+  const { transactions, bankAccounts, subscriptions, businessPlans, userName } = useApp();
 
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
   const [customStart, setCustomStart] = useState(() => daysAgo(30));
@@ -151,7 +151,7 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Good day</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Your Finances</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{userName || "Your Finances"}</Text>
         </View>
         <TouchableOpacity
           style={[styles.settingsBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
