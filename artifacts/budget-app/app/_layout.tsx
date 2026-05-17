@@ -22,26 +22,35 @@ import { ThemeProvider } from "@/context/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
 
-async function checkForAppUpdate() {
-  if (!Updates.isEnabled) return;
-  try {
-    const result = await Updates.checkForUpdateAsync();
-    if (!result.isAvailable) return;
-    await Updates.fetchUpdateAsync();
-    Alert.alert(
-      "Update Ready",
-      "A new version of Peso Tracker has been downloaded. Restart now to apply it.",
-      [
-        { text: "Later", style: "cancel" },
-        {
-          text: "Restart Now",
-          onPress: () => Updates.reloadAsync(),
-        },
-      ]
-    );
-  } catch {
-    // silently ignore — network offline or Expo Go environment
-  }
+function AppUpdater() {
+  const { isUpdateAvailable, isUpdatePending } = Updates.useUpdates();
+
+  useEffect(() => {
+    if (Updates.isEnabled) {
+      Updates.checkForUpdateAsync().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isUpdateAvailable) {
+      Updates.fetchUpdateAsync().catch(() => {});
+    }
+  }, [isUpdateAvailable]);
+
+  useEffect(() => {
+    if (isUpdatePending) {
+      Alert.alert(
+        "Update Ready",
+        "A new version of Peso Tracker has been downloaded. Restart now to apply it.",
+        [
+          { text: "Later", style: "cancel" },
+          { text: "Restart Now", onPress: () => Updates.reloadAsync() },
+        ]
+      );
+    }
+  }, [isUpdatePending]);
+
+  return null;
 }
 
 const queryClient = new QueryClient();
@@ -76,7 +85,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
-      checkForAppUpdate();
     }
   }, [fontsLoaded, fontError]);
 
@@ -90,6 +98,7 @@ export default function RootLayout() {
             <AppProvider>
               <GestureHandlerRootView style={{ flex: 1 }}>
                 <KeyboardProvider>
+                  <AppUpdater />
                   <RootLayoutNav />
                 </KeyboardProvider>
               </GestureHandlerRootView>
