@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useApp } from "@/context/AppContext";
@@ -8,9 +9,10 @@ import { formatCurrency } from "@/services/roiService";
 interface TransactionItemProps {
   transactionId: string;
   onPress?: () => void;
+  onDuplicate?: () => void;
 }
 
-export function TransactionItem({ transactionId, onPress }: TransactionItemProps) {
+export function TransactionItem({ transactionId, onPress, onDuplicate }: TransactionItemProps) {
   const colors = useColors();
   const { transactions, categories, expenseGroups } = useApp();
   const t = transactions.find((x) => x.id === transactionId);
@@ -68,6 +70,18 @@ export function TransactionItem({ transactionId, onPress }: TransactionItemProps
           })}
         </Text>
       </View>
+      {onDuplicate && (
+        <TouchableOpacity
+          style={[styles.copyBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onDuplicate();
+          }}
+          hitSlop={{ top: 6, right: 6, bottom: 6, left: 6 }}
+        >
+          <Feather name="copy" size={13} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
@@ -112,5 +126,13 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  copyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

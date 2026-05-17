@@ -60,7 +60,7 @@ function fmtDate(iso: string) {
 export default function TransactionsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { transactions, expenseGroups, subscriptions, deleteSubscription, updateSubscription } =
+  const { transactions, expenseGroups, subscriptions, deleteSubscription, updateSubscription, duplicateTransaction } =
     useApp();
 
   const [mainTab, setMainTab] = useState<MainTab>("transactions");
@@ -305,6 +305,12 @@ export default function TransactionsScreen() {
                     params: { id: item.id },
                   })
                 }
+                onDuplicate={() => {
+                  const newId = duplicateTransaction(item.id);
+                  if (newId) {
+                    router.push({ pathname: "/transaction/[id]", params: { id: newId } });
+                  }
+                }}
               />
             )}
             ListEmptyComponent={

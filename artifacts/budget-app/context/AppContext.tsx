@@ -125,6 +125,7 @@ interface AppContextType extends AppState {
   addTransaction: (t: Omit<Transaction, "id">) => void;
   updateTransaction: (t: Transaction) => void;
   deleteTransaction: (id: string) => void;
+  duplicateTransaction: (id: string) => string | null;
   addCategory: (c: Omit<Category, "id">) => void;
   deleteCategory: (id: string) => void;
   addExpenseGroup: (g: Omit<ExpenseGroup, "id">) => void;
@@ -257,6 +258,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...s,
         transactions: s.transactions.filter((x) => x.id !== id),
       }));
+    },
+    [update],
+  );
+
+  const duplicateTransaction = useCallback(
+    (id: string): string | null => {
+      const newId = genId();
+      update((s) => {
+        const orig = s.transactions.find((x) => x.id === id);
+        if (!orig) return s;
+        const copy: Transaction = {
+          ...orig,
+          id: newId,
+          date: new Date().toISOString().split("T")[0],
+        };
+        return { ...s, transactions: [copy, ...s.transactions] };
+      });
+      return newId;
     },
     [update],
   );
@@ -576,6 +595,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        duplicateTransaction,
         addCategory,
         deleteCategory,
         addExpenseGroup,

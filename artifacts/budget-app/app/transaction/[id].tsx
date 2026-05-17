@@ -21,7 +21,7 @@ export default function TransactionDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { transactions, categories, expenseGroups, updateTransaction, deleteTransaction } = useApp();
+  const { transactions, categories, expenseGroups, updateTransaction, deleteTransaction, duplicateTransaction } = useApp();
 
   const transaction = transactions.find((t) => t.id === id);
 
@@ -107,12 +107,26 @@ export default function TransactionDetailScreen() {
         <Text style={[styles.title, { color: colors.foreground }]}>
           Edit Transaction
         </Text>
-        <TouchableOpacity
-          onPress={handleDelete}
-          style={[styles.deleteBtn, { backgroundColor: colors.destructive + "22" }]}
-        >
-          <Feather name="trash-2" size={18} color={colors.destructive} />
-        </TouchableOpacity>
+        <View style={styles.navRight}>
+          <TouchableOpacity
+            onPress={() => {
+              const newId = duplicateTransaction(id!);
+              if (newId) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.replace({ pathname: "/transaction/[id]", params: { id: newId } });
+              }
+            }}
+            style={[styles.iconBtn, { backgroundColor: colors.primary + "18" }]}
+          >
+            <Feather name="copy" size={16} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={[styles.iconBtn, { backgroundColor: colors.destructive + "22" }]}
+          >
+            <Feather name="trash-2" size={16} color={colors.destructive} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.typeSwitch, { backgroundColor: colors.muted }]}>
@@ -207,6 +221,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   title: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  navRight: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   deleteBtn: {
     width: 42,
     height: 42,
