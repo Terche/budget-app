@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EmptyState } from "@/components/EmptyState";
 import { TransactionItem } from "@/components/TransactionItem";
-import { useApp } from "@/context/AppContext";
+import { useApp, Subscription } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { formatCurrency } from "@/services/roiService";
 
@@ -35,6 +35,26 @@ function cycleLabel(cycle: string) {
   if (cycle === "quarterly") return "Every 3 months";
   if (cycle === "yearly") return "Yearly";
   return cycle;
+}
+
+function totalPaid(sub: Subscription): number {
+  if (!sub.startDate) return 0;
+  const start = new Date(sub.startDate);
+  const now = new Date();
+  if (start > now) return 0;
+  const startY = start.getFullYear(), startM = start.getMonth();
+  const nowY = now.getFullYear(), nowM = now.getMonth();
+  const totalMonths = (nowY - startY) * 12 + (nowM - startM);
+  if (sub.billingCycle === "monthly") return Math.max(0, totalMonths) * sub.amount;
+  if (sub.billingCycle === "quarterly") return Math.max(0, Math.floor(totalMonths / 3)) * sub.amount;
+  if (sub.billingCycle === "yearly") return Math.max(0, Math.floor(totalMonths / 12)) * sub.amount;
+  return 0;
+}
+
+function fmtDate(iso: string) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
 }
 
 export default function TransactionsScreen() {
@@ -70,6 +90,16 @@ export default function TransactionsScreen() {
         }, 0),
     [subscriptions],
   );
+
+  const txTotals = useMemo(() => {
+    const income = filtered
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+    const expense = filtered
+      .filter((t) => t.type === "expense")
+      .reduce((s, t) => s + t.amount, 0);
+    return { income, expense, net: income - expense };
+  }, [filtered]);
 
   const topPad =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -237,6 +267,31 @@ export default function TransactionsScreen() {
             ))}
           </View>
 
+          {filtered.length > 0 && (
+            <View style={[styles.totalsBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.totalsCell}>
+                <Text style={[styles.totalsLabel, { color: colors.mutedForeground }]}>Income</Text>
+                <Text style={[styles.totalsValue, { color: colors.success }]}>
+                  {formatCurrency(txTotals.income)}
+                </Text>
+              </View>
+              <View style={[styles.totalsDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.totalsCell}>
+                <Text style={[styles.totalsLabel, { color: colors.mutedForeground }]}>Expenses</Text>
+                <Text style={[styles.totalsValue, { color: colors.destructive }]}>
+                  {formatCurrency(txTotals.expense)}
+                </Text>
+              </View>
+              <View style={[styles.totalsDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.totalsCell}>
+                <Text style={[styles.totalsLabel, { color: colors.mutedForeground }]}>Net</Text>
+                <Text style={[styles.totalsValue, { color: txTotals.net >= 0 ? colors.success : colors.destructive }]}>
+                  {txTotals.net >= 0 ? "+" : ""}{formatCurrency(txTotals.net)}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <FlatList
             data={filtered}
             keyExtractor={(item) => item.id}
@@ -261,7 +316,7 @@ export default function TransactionsScreen() {
             }
             contentContainerStyle={{
               paddingHorizontal: 20,
-              paddingTop: 16,
+              paddingTop: 12,
               paddingBottom: botPad + 100,
             }}
             showsVerticalScrollIndicator={false}
@@ -434,41 +489,52 @@ export default function TransactionsScreen() {
                     </View>
                   </View>
 
-                  {sub.isActive && (
-                    <View
-                      style={[
-                        styles.subNextBill,
-                        { borderTopColor: colors.border },
-                      ]}
-                    >
-                      <Feather
-                        name="calendar"
-                        size={12}
-                        color={
-                          daysUntil <= 3
-                            ? colors.destructive
-                            : colors.mutedForeground
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.subNextBillText,
-                          {
-                            color:
-                              daysUntil <= 3
-                                ? colors.destructive
-                                : colors.mutedForeground,
-                          },
-                        ]}
-                      >
-                        {daysUntil === 0
-                          ? "Due today!"
-                          : daysUntil === 1
-                            ? "Due tomorrow"
-                            : `Due in ${daysUntil} days · ${nextDate.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}`}
-                      </Text>
-                    </View>
-                  )}
+                  <View
+                    style={[
+                      styles.subFooter,
+                      { borderTopColor: colors.border },
+                    ]}
+                  >
+                    {sub.isActive ? (
+                      <View style={styles.subFooterLeft}>
+                        <Feather
+                          name="calendar"
+                          size={12}
+                          color={daysUntil <= 3 ? colors.destructive : colors.mutedForeground}
+                        />
+                        <Text
+                          style={[
+                            styles.subNextBillText,
+                            { color: daysUntil <= 3 ? colors.destructive : colors.mutedForeground },
+                          ]}
+                        >
+                          {daysUntil === 0
+                            ? "Due today!"
+                            : daysUntil === 1
+                              ? "Due tomorrow"
+                              : `Due in ${daysUntil} days · ${nextDate.toLocaleDateString("en-PH", { month: "short", day: "numeric" })}`}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.subFooterLeft}>
+                        <Feather name="pause-circle" size={12} color={colors.mutedForeground} />
+                        <Text style={[styles.subNextBillText, { color: colors.mutedForeground }]}>Paused</Text>
+                      </View>
+                    )}
+                    {sub.startDate ? (
+                      <View style={styles.subFooterRight}>
+                        <Feather name="clock" size={11} color={colors.mutedForeground} />
+                        <Text style={[styles.subNextBillText, { color: colors.mutedForeground }]}>
+                          {`Since ${fmtDate(sub.startDate)}`}
+                        </Text>
+                        {totalPaid(sub) > 0 && (
+                          <Text style={[styles.subNextBillText, { color: sub.color, fontFamily: "Inter_600SemiBold" }]}>
+                            {` · ${formatCurrency(totalPaid(sub))} total`}
+                          </Text>
+                        )}
+                      </View>
+                    ) : null}
+                  </View>
                 </TouchableOpacity>
               );
             })
@@ -643,5 +709,53 @@ const styles = StyleSheet.create({
   subNextBillText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  subFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  subFooterLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  subFooterRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  totalsBar: {
+    flexDirection: "row",
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  totalsCell: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  totalsDivider: {
+    width: StyleSheet.hairlineWidth,
+    marginVertical: 8,
+  },
+  totalsLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 3,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  totalsValue: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
   },
 });

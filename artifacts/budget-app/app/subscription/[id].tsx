@@ -12,9 +12,23 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useApp, BillingCycle } from "@/context/AppContext";
+import { useApp, BillingCycle, Subscription } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { formatCurrency } from "@/services/roiService";
+
+function calcTotalPaid(sub: Subscription): number {
+  if (!sub.startDate) return 0;
+  const start = new Date(sub.startDate);
+  const now = new Date();
+  if (start > now) return 0;
+  const startY = start.getFullYear(), startM = start.getMonth();
+  const nowY = now.getFullYear(), nowM = now.getMonth();
+  const months = (nowY - startY) * 12 + (nowM - startM);
+  if (sub.billingCycle === "monthly") return Math.max(0, months) * sub.amount;
+  if (sub.billingCycle === "quarterly") return Math.max(0, Math.floor(months / 3)) * sub.amount;
+  if (sub.billingCycle === "yearly") return Math.max(0, Math.floor(months / 12)) * sub.amount;
+  return 0;
+}
 
 const COLORS = [
   "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b",
@@ -43,6 +57,9 @@ export default function EditSubscriptionScreen() {
   );
   const [color, setColor] = useState(sub?.color ?? COLORS[0]);
   const [notes, setNotes] = useState(sub?.notes ?? "");
+  const [startDate, setStartDate] = useState(
+    sub?.startDate ?? new Date().toISOString().split("T")[0],
+  );
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
@@ -85,6 +102,7 @@ export default function EditSubscriptionScreen() {
       billingCycle,
       color,
       notes: notes.trim(),
+      startDate: startDate.trim() || sub!.startDate,
     });
     router.back();
   }
@@ -145,27 +163,46 @@ export default function EditSubscriptionScreen() {
               ? "qtr"
               : "yr"}
         </Text>
-        <View
-          style={[
-            styles.activeBadge,
-            {
-              backgroundColor: sub.isActive
-                ? colors.success + "22"
-                : colors.border,
-            },
-          ]}
-        >
-          <Text
+        <View style={styles.previewBadgeRow}>
+          <View
             style={[
-              styles.activeBadgeText,
+              styles.activeBadge,
               {
-                color: sub.isActive ? colors.success : colors.mutedForeground,
+                backgroundColor: sub.isActive
+                  ? colors.success + "22"
+                  : colors.border,
               },
             ]}
           >
-            {sub.isActive ? "Active" : "Paused"}
-          </Text>
+            <Text
+              style={[
+                styles.activeBadgeText,
+                {
+                  color: sub.isActive ? colors.success : colors.mutedForeground,
+                },
+              ]}
+            >
+              {sub.isActive ? "Active" : "Paused"}
+            </Text>
+          </View>
+          {calcTotalPaid(sub) > 0 && (
+            <View style={[styles.activeBadge, { backgroundColor: color + "22" }]}>
+              <Text style={[styles.activeBadgeText, { color }]}>
+                {formatCurrency(calcTotalPaid(sub))} total paid
+              </Text>
+            </View>
+          )}
         </View>
+        {startDate ? (
+          <Text style={[styles.previewMeta, { color: colors.mutedForeground }]}>
+            Started{" "}
+            {new Date(startDate).toLocaleDateString("en-PH", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })}
+          </Text>
+        ) : null}
       </View>
 
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
@@ -279,6 +316,26 @@ export default function EditSubscriptionScreen() {
       </View>
 
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
+        Start Date
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            color: colors.foreground,
+          },
+        ]}
+        placeholder="YYYY-MM-DD"
+        placeholderTextColor={colors.mutedForeground}
+        value={startDate}
+        onChangeText={setStartDate}
+        keyboardType="numbers-and-punctuation"
+        maxLength={10}
+      />
+
+      <Text style={[styles.label, { color: colors.mutedForeground }]}>
         Notes (optional)
       </Text>
       <TextInput
@@ -337,11 +394,21 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: "Inter_700Bold",
   },
+  previewBadgeRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 4,
+  },
+  previewMeta: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 6,
+  },
   activeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
-    marginTop: 4,
   },
   activeBadgeText: {
     fontSize: 12,

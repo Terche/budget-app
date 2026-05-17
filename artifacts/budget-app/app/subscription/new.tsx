@@ -37,6 +37,9 @@ export default function NewSubscriptionScreen() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [color, setColor] = useState(COLORS[0]);
   const [notes, setNotes] = useState("");
+  const [startDate, setStartDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
@@ -61,7 +64,7 @@ export default function NewSubscriptionScreen() {
       color,
       isActive: true,
       notes: notes.trim(),
-      startDate: new Date().toISOString().split("T")[0],
+      startDate: startDate.trim() || new Date().toISOString().split("T")[0],
     });
     router.back();
   }
@@ -198,6 +201,26 @@ export default function NewSubscriptionScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <Text style={[styles.label, { color: colors.mutedForeground }]}>
+        Start Date
+      </Text>
+      <TextInput
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            color: colors.foreground,
+          },
+        ]}
+        placeholder="YYYY-MM-DD"
+        placeholderTextColor={colors.mutedForeground}
+        value={startDate}
+        onChangeText={setStartDate}
+        keyboardType="numbers-and-punctuation"
+        maxLength={10}
+      />
 
       <Text style={[styles.label, { color: colors.mutedForeground }]}>
         Notes (optional)
