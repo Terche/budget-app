@@ -14,275 +14,218 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { useApp } from "@/context/AppContext";
+import { useApp, LoanType } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
-import { BusinessExpense } from "@/context/AppContext";
+import { formatCurrency } from "@/services/roiService";
 
-export default function NewROIPlanScreen() {
+const LOAN_TYPES: { key: LoanType; label: string; icon: string }[] = [
+  { key: "personal", label: "Personal", icon: "user" },
+  { key: "home", label: "Home", icon: "home" },
+  { key: "car", label: "Car", icon: "navigation" },
+  { key: "business", label: "Business", icon: "briefcase" },
+  { key: "other", label: "Other", icon: "credit-card" },
+];
+
+const LOAN_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#8b5cf6", "#3b82f6", "#10b981"];
+
+export default function NewLoanScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addBusinessPlan, savingsPlans } = useApp();
+  const { addLoan } = useApp();
 
   const [name, setName] = useState("");
-  const [capital, setCapital] = useState("");
-  const [revenue, setRevenue] = useState("");
-  const [months, setMonths] = useState("12");
-  const [expenses, setExpenses] = useState<BusinessExpense[]>([]);
-  const [expName, setExpName] = useState("");
-  const [expAmount, setExpAmount] = useState("");
-  const [expRecurring, setExpRecurring] = useState(true);
+  const [lenderName, setLenderName] = useState("");
+  const [loanType, setLoanType] = useState<LoanType>("personal");
+  const [principalAmount, setPrincipalAmount] = useState("");
+  const [remainingBalance, setRemainingBalance] = useState("");
+  const [interestRate, setInterestRate] = useState("");
+  const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [termMonths, setTermMonths] = useState("");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedColor, setSelectedColor] = useState(LOAN_COLORS[0]);
+  const [notes, setNotes] = useState("");
 
-  const topPad =
-    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
 
-  function addExpense() {
-    if (!expName.trim() || !expAmount || isNaN(parseFloat(expAmount))) {
-      Alert.alert("Error", "Enter expense name and amount");
-      return;
-    }
-    const id =
-      Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    setExpenses((prev) => [
-      ...prev,
-      {
-        id,
-        description: expName.trim(),
-        amount: parseFloat(expAmount),
-        isRecurring: expRecurring,
-      },
-    ]);
-    setExpName("");
-    setExpAmount("");
-  }
+  const principal = parseFloat(principalAmount) || 0;
+  const remaining = parseFloat(remainingBalance) || principal;
+  const rate = parseFloat(interestRate) || 0;
+  const payment = parseFloat(monthlyPayment) || 0;
 
-  function removeExpense(id: string) {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
-  }
+  const monthlyInterest = remaining * (rate / 12 / 100);
+  const principalPortion = Math.max(0, payment - monthlyInterest);
 
   function handleSave() {
-    if (!name.trim()) {
-      Alert.alert("Error", "Enter a plan name");
+    if (!name.trim()) { Alert.alert("Validation", "Loan name is required."); return; }
+    if (!principalAmount || principal <= 0) { Alert.alert("Validation", "Principal amount is required."); return; }
+    if (!monthlyPayment || payment <= 0) { Alert.alert("Validation", "Monthly payment is required."); return; }
+    if (rate > 0 && payment <= monthlyInterest) {
+      Alert.alert("Warning", "Monthly payment is less than or equal to the monthly interest. The loan will never be paid off. Continue?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Continue", onPress: save },
+      ]);
       return;
     }
-    const cap = parseFloat(capital);
-    const rev = parseFloat(revenue);
-    const mo = parseInt(months, 10);
+    save();
+  }
 
-    if (isNaN(cap) || cap < 0) {
-      Alert.alert("Error", "Enter a valid initial capital");
-      return;
-    }
-    if (isNaN(rev) || rev < 0) {
-      Alert.alert("Error", "Enter a valid monthly revenue");
-      return;
-    }
-    if (isNaN(mo) || mo < 1) {
-      Alert.alert("Error", "Enter a valid number of months");
-      return;
-    }
-
-    addBusinessPlan({
-      name: name.trim(),
-      initialCapital: cap,
-      expectedRevenue: rev,
-      timePeriodMonths: mo,
-      expenses,
-    });
+  function save() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addLoan({
+      name: name.trim(),
+      lenderName: lenderName.trim(),
+      loanType,
+      principalAmount: principal,
+      remainingBalance: remainingBalance ? parseFloat(remainingBalance) : principal,
+      interestRate: rate,
+      monthlyPayment: payment,
+      termMonths: parseInt(termMonths) || 0,
+      startDate,
+      color: selectedColor,
+      notes: notes.trim(),
+    });
     router.back();
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{
-        paddingTop: topPad + 16,
-        paddingHorizontal: 20,
-        paddingBottom: botPad + 40,
-      }}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.navRow}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={[
-            styles.backBtn,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <Feather name="x" size={20} color={colors.foreground} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { paddingTop: topPad + 16, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Feather name="x" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          New Business Plan
-        </Text>
-        <View style={{ width: 42 }} />
+        <Text style={[styles.heading, { color: colors.foreground }]}>Add Loan / Debt</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      <FormField
-        label="Plan Name"
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. Coffee Shop Business"
-      />
-      <FormField
-        label="Initial Capital (₱)"
-        value={capital}
-        onChangeText={setCapital}
-        placeholder="0.00"
-        keyboardType="decimal-pad"
-      />
-      <FormField
-        label="Expected Monthly Revenue (₱)"
-        value={revenue}
-        onChangeText={setRevenue}
-        placeholder="0.00"
-        keyboardType="decimal-pad"
-      />
-      <FormField
-        label="Time Period (months)"
-        value={months}
-        onChangeText={setMonths}
-        placeholder="12"
-        keyboardType="number-pad"
-      />
-
-      <Text style={[styles.sectionLabel, { color: colors.foreground }]}>
-        Expected Expenses
-      </Text>
-
-      {expenses.map((e) => (
-        <View
-          key={e.id}
-          style={[
-            styles.expenseRow,
-            { backgroundColor: colors.muted, borderColor: colors.border },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.expenseName, { color: colors.foreground }]}>
-              {e.description}
-            </Text>
-            <Text
-              style={[styles.expenseMeta, { color: colors.mutedForeground }]}
-            >
-              ${e.amount.toFixed(2)} · {e.isRecurring ? "Monthly" : "One-time"}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => removeExpense(e.id)}>
-            <Feather name="x" size={16} color={colors.destructive} />
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      <View
-        style={[
-          styles.addExpenseBox,
-          { backgroundColor: colors.card, borderColor: colors.border },
-        ]}
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: botPad + 60 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text
-          style={[styles.addExpenseTitle, { color: colors.mutedForeground }]}
-        >
-          Add Expense Item
-        </Text>
+        <FormField label="Loan Name *" value={name} onChangeText={setName} placeholder="e.g. Home Loan, Personal Loan" />
+        <FormField label="Lender / Bank" value={lenderName} onChangeText={setLenderName} placeholder="e.g. BDO, BPI, SSS" />
+
+        <Text style={[styles.label, { color: colors.foreground }]}>Loan Type</Text>
+        <View style={styles.typeRow}>
+          {LOAN_TYPES.map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              style={[
+                styles.typeBtn,
+                { borderColor: colors.border, backgroundColor: colors.card },
+                loanType === t.key && { borderColor: selectedColor, backgroundColor: selectedColor + "18" },
+              ]}
+              onPress={() => setLoanType(t.key)}
+            >
+              <Feather name={t.icon as keyof typeof Feather.glyphMap} size={16} color={loanType === t.key ? selectedColor : colors.mutedForeground} />
+              <Text style={[styles.typeBtnText, { color: loanType === t.key ? selectedColor : colors.mutedForeground }]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <FormField
-          label="Description"
-          value={expName}
-          onChangeText={setExpName}
-          placeholder="e.g. Rent"
-        />
-        <FormField
-          label="Amount (₱)"
-          value={expAmount}
-          onChangeText={setExpAmount}
-          placeholder="0.00"
+          label="Original Principal Amount (₱) *"
+          value={principalAmount}
+          onChangeText={setPrincipalAmount}
+          placeholder="e.g. 500000"
           keyboardType="decimal-pad"
         />
-        <View style={styles.recurringRow}>
-          <Text style={[styles.recurringLabel, { color: colors.foreground }]}>
-            Recurring (monthly)?
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.toggle,
-              {
-                backgroundColor: expRecurring
-                  ? colors.primary
-                  : colors.muted,
-              },
-            ]}
-            onPress={() => setExpRecurring(!expRecurring)}
-          >
-            <Text style={[styles.toggleText, { color: expRecurring ? "#fff" : colors.mutedForeground }]}>
-              {expRecurring ? "Yes" : "No"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <PrimaryButton
-          label="+ Add Expense"
-          onPress={addExpense}
-          variant="secondary"
+        <FormField
+          label="Remaining Balance (₱)"
+          value={remainingBalance}
+          onChangeText={setRemainingBalance}
+          placeholder={principalAmount || "Leave blank if same as principal"}
+          keyboardType="decimal-pad"
         />
-      </View>
+        <FormField
+          label="Annual Interest Rate (% per year)"
+          value={interestRate}
+          onChangeText={setInterestRate}
+          placeholder="e.g. 12 for 12%"
+          keyboardType="decimal-pad"
+        />
+        <FormField
+          label="Monthly Payment (₱) *"
+          value={monthlyPayment}
+          onChangeText={setMonthlyPayment}
+          placeholder="e.g. 10000"
+          keyboardType="decimal-pad"
+        />
 
-      <PrimaryButton
-        label="Create Business Plan"
-        onPress={handleSave}
-        style={{ marginTop: 16 }}
-      />
-    </ScrollView>
+        {rate > 0 && payment > 0 && (
+          <View style={[styles.previewBox, { backgroundColor: colors.accent, borderColor: colors.primary + "33" }]}>
+            <Text style={[styles.previewTitle, { color: colors.primary }]}>Monthly Breakdown</Text>
+            <View style={styles.previewRow}>
+              <Text style={[styles.previewLabel, { color: colors.mutedForeground }]}>Interest portion</Text>
+              <Text style={[styles.previewValue, { color: colors.expense }]}>{formatCurrency(monthlyInterest)}</Text>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={[styles.previewLabel, { color: colors.mutedForeground }]}>Principal portion</Text>
+              <Text style={[styles.previewValue, { color: colors.success }]}>{formatCurrency(principalPortion)}</Text>
+            </View>
+          </View>
+        )}
+
+        <FormField
+          label="Loan Term (months)"
+          value={termMonths}
+          onChangeText={setTermMonths}
+          placeholder="e.g. 60 for 5 years"
+          keyboardType="numeric"
+        />
+        <FormField
+          label="Start Date"
+          value={startDate}
+          onChangeText={setStartDate}
+          placeholder="YYYY-MM-DD"
+        />
+
+        <Text style={[styles.label, { color: colors.foreground }]}>Color</Text>
+        <View style={styles.colorRow}>
+          {LOAN_COLORS.map((c) => (
+            <TouchableOpacity
+              key={c}
+              style={[styles.colorDot, { backgroundColor: c }, selectedColor === c && styles.colorDotActive]}
+              onPress={() => setSelectedColor(c)}
+            >
+              {selectedColor === c && <Feather name="check" size={14} color="#fff" />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <FormField label="Notes" value={notes} onChangeText={setNotes} placeholder="Optional notes" multiline />
+
+        <PrimaryButton label="Add Loan" onPress={handleSave} style={{ marginTop: 24 }} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  navRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 24,
+  header: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
+  backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  heading: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  label: { fontSize: 14, fontFamily: "Inter_500Medium", marginBottom: 8, marginTop: 4 },
+  typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
+  typeBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12,
+    paddingVertical: 8, borderRadius: 10, borderWidth: 1,
   },
-  title: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  sectionLabel: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 12 },
-  expenseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 8,
+  typeBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  previewBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 16, gap: 8 },
+  previewTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  previewRow: { flexDirection: "row", justifyContent: "space-between" },
+  previewLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  previewValue: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  colorRow: { flexDirection: "row", gap: 10, marginBottom: 16, flexWrap: "wrap" },
+  colorDot: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: "center", justifyContent: "center",
   },
-  expenseName: { fontSize: 14, fontFamily: "Inter_500Medium" },
-  expenseMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  addExpenseBox: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  addExpenseTitle: { fontSize: 13, fontFamily: "Inter_500Medium", marginBottom: 12 },
-  recurringRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  recurringLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
-  toggle: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  toggleText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  colorDotActive: { borderWidth: 3, borderColor: "#fff" },
 });

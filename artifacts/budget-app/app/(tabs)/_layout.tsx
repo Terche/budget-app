@@ -70,8 +70,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="roi"
         options={{
-          title: "ROI",
-          tabBarIcon: ({ color }) => <Feather name="briefcase" size={20} color={color} />,
+          title: "Loans",
+          tabBarIcon: ({ color }) => <Feather name="credit-card" size={20} color={color} />,
         }}
       />
       <Tabs.Screen

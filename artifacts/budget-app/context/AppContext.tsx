@@ -107,6 +107,31 @@ export interface Subscription {
   startDate: string;
 }
 
+export type LoanType = "personal" | "home" | "car" | "business" | "other";
+
+export interface Loan {
+  id: string;
+  name: string;
+  lenderName: string;
+  loanType: LoanType;
+  principalAmount: number;
+  remainingBalance: number;
+  interestRate: number;
+  monthlyPayment: number;
+  termMonths: number;
+  startDate: string;
+  color: string;
+  notes: string;
+}
+
+export interface LoanPayment {
+  id: string;
+  loanId: string;
+  date: string;
+  amount: number;
+  notes: string;
+}
+
 interface AppState {
   transactions: Transaction[];
   categories: Category[];
@@ -117,6 +142,8 @@ interface AppState {
   bankAccounts: BankAccount[];
   accountEntries: AccountEntry[];
   subscriptions: Subscription[];
+  loans: Loan[];
+  loanPayments: LoanPayment[];
   userName: string;
 }
 
@@ -148,6 +175,11 @@ interface AppContextType extends AppState {
   addSubscription: (s: Omit<Subscription, "id">) => void;
   updateSubscription: (s: Subscription) => void;
   deleteSubscription: (id: string) => void;
+  addLoan: (l: Omit<Loan, "id">) => void;
+  updateLoan: (l: Loan) => void;
+  deleteLoan: (id: string) => void;
+  addLoanPayment: (p: Omit<LoanPayment, "id">) => void;
+  deleteLoanPayment: (id: string) => void;
 }
 
 const STORAGE_KEY = "budget_app_data_v2";
@@ -179,6 +211,8 @@ const defaultState: AppState = {
   bankAccounts: [],
   accountEntries: [],
   subscriptions: [],
+  loans: [],
+  loanPayments: [],
   userName: "",
 };
 
@@ -208,6 +242,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               parsed.expenseGroups?.length > 0
                 ? parsed.expenseGroups
                 : defaultGroups,
+            loans: parsed.loans ?? [],
+            loanPayments: parsed.loanPayments ?? [],
           });
         } catch {
           // ignore parse errors
@@ -578,6 +614,81 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [update],
   );
 
+  const addLoan = useCallback(
+    (l: Omit<Loan, "id">) => {
+      update((s) => ({
+        ...s,
+        loans: [{ ...l, id: genId() }, ...s.loans],
+      }));
+    },
+    [update],
+  );
+
+  const updateLoan = useCallback(
+    (l: Loan) => {
+      update((s) => ({
+        ...s,
+        loans: s.loans.map((x) => (x.id === l.id ? l : x)),
+      }));
+    },
+    [update],
+  );
+
+  const deleteLoan = useCallback(
+    (id: string) => {
+      update((s) => ({
+        ...s,
+        loans: s.loans.filter((x) => x.id !== id),
+        loanPayments: s.loanPayments.filter((x) => x.loanId !== id),
+      }));
+    },
+    [update],
+  );
+
+  const addLoanPayment = useCallback(
+    (p: Omit<LoanPayment, "id">) => {
+      const payment: LoanPayment = { ...p, id: genId() };
+      update((s) => {
+        const loan = s.loans.find((l) => l.id === p.loanId);
+        if (!loan) return s;
+        const newBalance = Math.max(0, loan.remainingBalance - p.amount);
+        return {
+          ...s,
+          loanPayments: [payment, ...s.loanPayments],
+          loans: s.loans.map((l) =>
+            l.id === p.loanId ? { ...l, remainingBalance: newBalance } : l,
+          ),
+        };
+      });
+    },
+    [update],
+  );
+
+  const deleteLoanPayment = useCallback(
+    (id: string) => {
+      update((s) => {
+        const payment = s.loanPayments.find((p) => p.id === id);
+        if (!payment) return s;
+        const loan = s.loans.find((l) => l.id === payment.loanId);
+        if (!loan) return s;
+        const restoredBalance = Math.min(
+          loan.principalAmount,
+          loan.remainingBalance + payment.amount,
+        );
+        return {
+          ...s,
+          loanPayments: s.loanPayments.filter((p) => p.id !== id),
+          loans: s.loans.map((l) =>
+            l.id === payment.loanId
+              ? { ...l, remainingBalance: restoredBalance }
+              : l,
+          ),
+        };
+      });
+    },
+    [update],
+  );
+
   const setUserName = useCallback(
     (name: string) => {
       update((s) => ({ ...s, userName: name }));
@@ -618,6 +729,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addSubscription,
         updateSubscription,
         deleteSubscription,
+        addLoan,
+        updateLoan,
+        deleteLoan,
+        addLoanPayment,
+        deleteLoanPayment,
       }}
     >
       {children}
