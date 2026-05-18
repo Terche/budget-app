@@ -61,6 +61,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="plans"
+        options={{
+          title: "Savings",
+          tabBarIcon: ({ color }) => <Feather name="trending-up" size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="savings"
         options={{
           title: "Accounts",
