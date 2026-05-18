@@ -1,8 +1,19 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "tQIkDg1dcqpIXTrsExb8v"
 uri = "file://artifacts/budget-app/assets/images/icon.png"
 type = "image"
 title = "budget app icon"
+
+[[outputs]]
+id = "DpCt5ml4fE0E_epH9m2xj"
+uri = "file://README.md"
+type = "text"
+title = "README.md — GitHub"
+
+[[outputs]]
+id = "Lgqq0w2qfzPvj89W5cnEV"
+uri = "file://linkedin-post.md"
+type = "text"
+title = "LinkedIn Post"
