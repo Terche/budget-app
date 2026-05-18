@@ -63,15 +63,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="plans"
         options={{
-          title: "Savings",
+          title: "Goals",
           tabBarIcon: ({ color }) => <Feather name="trending-up" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="savings"
         options={{
-          title: "Accounts",
-          tabBarIcon: ({ color }) => <Feather name="layers" size={20} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen

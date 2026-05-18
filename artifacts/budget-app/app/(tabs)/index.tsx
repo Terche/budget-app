@@ -47,7 +47,7 @@ type DatePickTarget = "start" | "end";
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { transactions, bankAccounts, subscriptions, businessPlans, userName } = useApp();
+  const { transactions, bankAccounts, subscriptions, loans, userName } = useApp();
 
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
   const [customStart, setCustomStart] = useState(() => daysAgo(30));
@@ -94,8 +94,9 @@ export default function DashboardScreen() {
         if (s.billingCycle === "yearly") return sum + s.amount / 12;
         return sum;
       }, 0);
-    return { income, expense, balance, accountsBalance, monthlyBills };
-  }, [filteredTransactions, bankAccounts, subscriptions]);
+    const totalDebt = loans.reduce((sum, l) => sum + l.remainingBalance, 0);
+    return { income, expense, balance, accountsBalance, monthlyBills, totalDebt };
+  }, [filteredTransactions, bankAccounts, subscriptions, loans]);
 
   const recentTransactions = useMemo(
     () =>
@@ -105,10 +106,10 @@ export default function DashboardScreen() {
     [filteredTransactions],
   );
 
-  const topROI = useMemo(() => {
-    if (businessPlans.length === 0) return null;
-    return businessPlans[businessPlans.length - 1];
-  }, [businessPlans]);
+  const topLoan = useMemo(() => {
+    if (loans.length === 0) return null;
+    return [...loans].sort((a, b) => b.remainingBalance - a.remainingBalance)[0];
+  }, [loans]);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const botPad = Platform.OS === "web" ? 34 : 0;
@@ -221,20 +222,61 @@ export default function DashboardScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.statsScroll}
-        contentContainerStyle={styles.statsRow}
-      >
+      <View style={styles.statsRow}>
         <StatCard label="Accounts Balance" value={formatCurrency(stats.accountsBalance)} icon="layers" color={colors.success} />
         <StatCard label="Monthly Bills" value={formatCurrency(stats.monthlyBills)} icon="repeat" color={colors.destructive} />
-        <StatCard label="Business Plans" value={businessPlans.length.toString()} icon="briefcase" color={colors.primary} />
-      </ScrollView>
+      </View>
 
-      {topROI ? (
+      <View style={[styles.accountsSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.accountsSectionHeader}
+          onPress={() => router.push("/savings")}
+          activeOpacity={0.7}
+        >
+          <View style={styles.accountsSectionLeft}>
+            <Feather name="credit-card" size={16} color={colors.primary} />
+            <Text style={[styles.accountsSectionTitle, { color: colors.foreground }]}>Bank Accounts</Text>
+          </View>
+          <View style={styles.accountsSectionRight}>
+            <Text style={[styles.accountsSectionTotal, { color: colors.foreground }]}>{formatCurrency(stats.accountsBalance)}</Text>
+            <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+          </View>
+        </TouchableOpacity>
+
+        {bankAccounts.length === 0 ? (
+          <TouchableOpacity
+            style={[styles.accountsEmptyRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push("/savings/new")}
+            activeOpacity={0.7}
+          >
+            <Feather name="plus-circle" size={14} color={colors.primary} />
+            <Text style={[styles.accountsEmptyText, { color: colors.primary }]}>Add BDO, BPI, GCash, or Cash</Text>
+          </TouchableOpacity>
+        ) : (
+          bankAccounts.slice(0, 3).map((acct, i) => (
+            <View key={acct.id} style={[styles.accountRow, { borderTopColor: colors.border }]}>
+              <View style={[styles.accountDot, { backgroundColor: acct.color }]} />
+              <Text style={[styles.accountRowName, { color: colors.foreground }]} numberOfLines={1}>{acct.name}</Text>
+              <Text style={[styles.accountRowBank, { color: colors.mutedForeground }]}>{acct.bankName}</Text>
+              <Text style={[styles.accountRowBal, { color: colors.foreground }]}>{formatCurrency(acct.balance)}</Text>
+            </View>
+          ))
+        )}
+
+        {bankAccounts.length > 3 && (
+          <TouchableOpacity
+            style={[styles.accountsMoreRow, { borderTopColor: colors.border }]}
+            onPress={() => router.push("/savings")}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.accountsMoreText, { color: colors.primary }]}>+{bankAccounts.length - 3} more account{bankAccounts.length - 3 !== 1 ? "s" : ""}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {topLoan ? (
         <>
-          <SectionHeader title="Latest Business Plan" />
+          <SectionHeader title="Largest Loan" />
           <TouchableOpacity
             style={[styles.roiCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}
             onPress={() => router.push("/(tabs)/roi")}
@@ -242,12 +284,12 @@ export default function DashboardScreen() {
           >
             <View style={styles.roiCardRow}>
               <View style={[styles.roiIcon, { backgroundColor: colors.accent, borderRadius: colors.radius / 2 }]}>
-                <Feather name="briefcase" size={18} color={colors.primary} />
+                <Feather name="credit-card" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.roiName, { color: colors.foreground }]}>{topROI.name}</Text>
+                <Text style={[styles.roiName, { color: colors.foreground }]}>{topLoan.name}</Text>
                 <Text style={[styles.roiMeta, { color: colors.mutedForeground }]}>
-                  Capital: {formatCurrency(topROI.initialCapital)} · {topROI.timePeriodMonths}mo
+                  Balance: {formatCurrency(topLoan.remainingBalance)} · {topLoan.monthlyPayment > 0 ? `${formatCurrency(topLoan.monthlyPayment)}/mo` : "no payment set"}
                 </Text>
               </View>
               <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -426,8 +468,49 @@ const styles = StyleSheet.create({
   balanceDivider: { width: 1, height: 44, marginHorizontal: 16 },
   balanceStatLabel: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "Inter_400Regular" },
   balanceStatValue: { color: "#ffffff", fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  statsScroll: { marginBottom: 24 },
-  statsRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingRight: 20 },
+  statsRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  accountsSection: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 24,
+    overflow: "hidden",
+  },
+  accountsSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+  },
+  accountsSectionLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  accountsSectionTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  accountsSectionRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  accountsSectionTotal: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  accountsEmptyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accountsEmptyText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accountDot: { width: 8, height: 8, borderRadius: 4 },
+  accountRowName: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
+  accountRowBank: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  accountRowBal: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  accountsMoreRow: {
+    padding: 12,
+    alignItems: "center",
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accountsMoreText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   roiCard: { padding: 14, borderWidth: 1, marginBottom: 24 },
   roiCardRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   roiIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
