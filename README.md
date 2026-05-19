@@ -124,16 +124,6 @@ All data is stored locally on the device using **AsyncStorage**. Nothing is sent
 
 ---
 
-## Roadmap
-
-- [ ] Bank account sync via Open Finance Philippines API
-- [ ] Push notification reminders for bill due dates and savings contributions
-- [ ] Recurring transaction templates
-- [ ] Budget envelopes / spending limits per category
-- [ ] iCloud / Google Drive backup
-
----
-
 ## License
 
 MIT
